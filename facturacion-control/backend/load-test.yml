@@ -1,0 +1,34 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 10
+      arrivalRate: 1
+      rampTo: 2
+      name: "Warm up phase"
+    - duration: 20
+      arrivalRate: 2
+      name: "Sustained load"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: "Get root endpoint"
+    flow:
+      - get:
+          url: "/"
+          expect:
+            - statusCode: 200
+  - name: "Get patients"
+    flow:
+      - get:
+          url: "/api/patients"
+          expect:
+            - statusCode: 200
+
+  - name: "Get services"
+    flow:
+      - get:
+          url: "/api/services"
+          expect:
+            - statusCode: 200
