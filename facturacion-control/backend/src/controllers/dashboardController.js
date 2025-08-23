@@ -4,6 +4,7 @@ const Patient = require('../models/Patient');
 const PreBill = require('../models/PreBill');
 const Company = require('../models/Company');
 const logger = require('../utils/logger');
+const Contract = require('../models/Contract');
 const { measurePerformance } = require('../utils/performanceMonitor');
 
 // Función para obtener estadísticas por período
@@ -316,7 +317,476 @@ const getRecentServices = async (req, res) => {
     }
 };
 
+// Nuevo endpoint para estadísticas avanzadas con filtros múltiples
+const getDashboardStatsAdvanced = async (req, res) => {
+  try {
+    const {
+      period = 'month',
+      company = 'all',
+      contract = 'all',
+      regimen = 'all',
+      municipality = 'all',
+      startDate,
+      endDate
+    } = req.query;
+
+    // Calcular fechas
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter = {
+        serviceDate: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      const endDateCalc = new Date();
+      let startDateCalc = new Date();
+      
+      switch(period) {
+        case 'today':
+          startDateCalc.setHours(0, 0, 0, 0);
+          endDateCalc.setHours(23, 59, 59, 999);
+          break;
+        case 'week':
+          startDateCalc.setDate(startDateCalc.getDate() - 7);
+          break;
+        case 'month':
+          startDateCalc.setMonth(startDateCalc.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDateCalc.setMonth(startDateCalc.getMonth() - 3);
+          break;
+        case 'semester':
+          startDateCalc.setMonth(startDateCalc.getMonth() - 6);
+          break;
+        case 'year':
+          startDateCalc.setFullYear(startDateCalc.getFullYear() - 1);
+          break;
+      }
+      
+      dateFilter = {
+        serviceDate: { $gte: startDateCalc, $lte: endDateCalc }
+      };
+    }
+
+    // Construir filtros dinámicos
+    let serviceFilter = { ...dateFilter };
+    let patientFilter = {};
+    
+    if (company !== 'all') {
+      serviceFilter.companyId = new mongoose.Types.ObjectId(company);
+    }
+    
+    if (contract !== 'all') {
+      serviceFilter.contractId = new mongoose.Types.ObjectId(contract);
+    }
+    
+    if (regimen !== 'all') {
+      patientFilter.regimen = regimen;
+    }
+    
+    if (municipality !== 'all') {
+      patientFilter.municipality = municipality;
+    }
+
+    // Ejecutar consultas en paralelo
+    const [
+      // Métricas básicas con filtros
+      totalServices,
+      totalRevenue,
+      totalPatients,
+      pendingServices,
+      
+      // Contratos con progreso de techo
+      contractsWithProgress,
+      
+      // Distribuciones
+      servicesByRegimen,
+      servicesByMunicipality,
+      servicesByCompany,
+      servicesByType,
+      
+      // Tendencias temporales
+      servicesOverTime,
+      revenueOverTime,
+      
+      // Métricas de eficiencia
+      averageServiceValue,
+      topServices
+      
+    ] = await Promise.all([
+      // Total servicios filtrados
+      ServiceRecord.countDocuments(serviceFilter),
+      
+      // Total ingresos
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        { $group: { _id: null, total: { $sum: '$value' } } }
+      ]).then(result => result[0]?.total || 0),
+      
+      // Pacientes únicos
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        { $group: { _id: '$patientId' } },
+        { $count: 'total' }
+      ]).then(result => result[0]?.total || 0),
+      
+      // Servicios pendientes
+      ServiceRecord.countDocuments({ ...serviceFilter, status: 'pendiente' }),
+      
+      // Contratos con progreso de techo
+      Contract.find({
+        ...(company !== 'all' ? { company: new mongoose.Types.ObjectId(company) } : {}),
+        tieneTecho: true,
+        status: 'active'
+      })
+      .populate('company', 'name')
+      .lean()
+      .then(async (contracts) => {
+        // Actualizar valores facturados para cada contrato
+        const contractsWithData = await Promise.all(
+          contracts.map(async (contract) => {
+            const facturado = await ServiceRecord.aggregate([
+              {
+                $match: {
+                  contractId: contract._id,
+                  status: { $ne: 'anulado' }
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: '$value' }
+                }
+              }
+            ]);
+            
+            const valorFacturado = facturado[0]?.total || 0;
+            const porcentajeEjecutado = contract.valorTecho > 0 ? 
+              Math.round((valorFacturado / contract.valorTecho) * 100) : 0;
+            
+            return {
+              ...contract,
+              valorFacturado,
+              porcentajeEjecutado,
+              valorDisponible: contract.valorTecho - valorFacturado,
+              estado: porcentajeEjecutado >= 90 ? 'critico' : 
+                     porcentajeEjecutado >= 80 ? 'alerta' : 'normal'
+            };
+          })
+        );
+        
+        return contractsWithData.sort((a, b) => b.porcentajeEjecutado - a.porcentajeEjecutado);
+      }),
+      
+      // Distribución por régimen
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $lookup: {
+            from: 'patients',
+            localField: 'patientId',
+            foreignField: '_id',
+            as: 'patient'
+          }
+        },
+        { $unwind: '$patient' },
+        ...(Object.keys(patientFilter).length > 0 ? [{ $match: patientFilter }] : []),
+        {
+          $group: {
+            _id: '$patient.regimen',
+            count: { $sum: 1 },
+            value: { $sum: '$value' }
+          }
+        }
+      ]),
+      
+      // Distribución por municipio
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $lookup: {
+            from: 'patients',
+            localField: 'patientId',
+            foreignField: '_id',
+            as: 'patient'
+          }
+        },
+        { $unwind: '$patient' },
+        ...(Object.keys(patientFilter).length > 0 ? [{ $match: patientFilter }] : []),
+        {
+          $group: {
+            _id: '$patient.municipality',
+            count: { $sum: 1 },
+            value: { $sum: '$value' }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      
+      // Distribución por empresa
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $lookup: {
+            from: 'companies',
+            localField: 'companyId',
+            foreignField: '_id',
+            as: 'company'
+          }
+        },
+        { $unwind: '$company' },
+        {
+          $group: {
+            _id: { id: '$companyId', name: '$company.name' },
+            count: { $sum: 1 },
+            value: { $sum: '$value' }
+          }
+        }
+      ]),
+      
+      // Distribución por tipo de servicio (basado en CUPS)
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $group: {
+            _id: {
+              $cond: {
+                if: { $regexMatch: { input: '$cupsCode', regex: /^89/ } },
+                then: 'Consultas',
+                else: {
+                  $cond: {
+                    if: { $regexMatch: { input: '$cupsCode', regex: /^87/ } },
+                    then: 'Procedimientos',
+                    else: 'Otros'
+                  }
+                }
+              }
+            },
+            count: { $sum: 1 },
+            value: { $sum: '$value' }
+          }
+        }
+      ]),
+      
+      // Servicios a lo largo del tiempo
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$serviceDate' },
+              month: { $month: '$serviceDate' },
+              day: period === 'week' || period === 'today' ? { $dayOfMonth: '$serviceDate' } : null
+            },
+            count: { $sum: 1 },
+            value: { $sum: '$value' }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+      ]),
+      
+      // Ingresos a lo largo del tiempo (igual estructura que servicios)
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$serviceDate' },
+              month: { $month: '$serviceDate' }
+            },
+            totalValue: { $sum: '$value' }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } }
+      ]),
+      
+      // Valor promedio de servicio
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $group: {
+            _id: null,
+            avgValue: { $avg: '$value' }
+          }
+        }
+      ]).then(result => result[0]?.avgValue || 0),
+      
+      // Top 10 servicios más facturados
+      ServiceRecord.aggregate([
+        { $match: serviceFilter },
+        {
+          $group: {
+            _id: '$cupsCode',
+            count: { $sum: 1 },
+            totalValue: { $sum: '$value' }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ])
+    ]);
+
+    // Formatear respuesta
+    const response = {
+      // Métricas principales
+      metrics: {
+        totalServices,
+        totalRevenue,
+        totalPatients,
+        pendingServices,
+        averageServiceValue: Math.round(averageServiceValue)
+      },
+      
+      // Progreso de contratos con techo
+      contractsProgress: contractsWithProgress,
+      
+      // Distribuciones
+      distributions: {
+        byRegimen: servicesByRegimen.map(item => ({
+          name: item._id || 'No especificado',
+          count: item.count,
+          value: item.value
+        })),
+        byMunicipality: servicesByMunicipality.map(item => ({
+          name: item._id || 'No especificado',
+          count: item.count,
+          value: item.value
+        })),
+        byCompany: servicesByCompany.map(item => ({
+          name: item._id.name || 'No especificado',
+          count: item.count,
+          value: item.value
+        })),
+        byServiceType: servicesByType.map(item => ({
+          name: item._id,
+          count: item.count,
+          value: item.value
+        }))
+      },
+      
+      // Tendencias temporales
+      trends: {
+        servicesOverTime: servicesOverTime.map(item => ({
+          period: `${item._id.year}-${String(item._id.month).padStart(2, '0')}${item._id.day ? `-${String(item._id.day).padStart(2, '0')}` : ''}`,
+          count: item.count,
+          value: item.value
+        })),
+        revenueOverTime: revenueOverTime.map(item => ({
+          period: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+          value: item.totalValue
+        }))
+      },
+      
+      // Top servicios
+      topServices: topServices.map(item => ({
+        cupsCode: item._id,
+        count: item.count,
+        totalValue: item.totalValue
+      })),
+      
+      // Metadatos
+      filters: {
+        period,
+        company,
+        contract,
+        regimen,
+        municipality,
+        startDate,
+        endDate
+      },
+      
+      timestamp: new Date()
+    };
+
+    res.json(response);
+    
+  } catch (error) {
+    console.error('Error en getDashboardStatsAdvanced:', error);
+    res.status(500).json({
+      message: 'Error al obtener estadísticas avanzadas',
+      error: error.message
+    });
+  }
+};
+
+// Endpoint específico para proyecciones
+const getProjections = async (req, res) => {
+  try {
+    const { company, contract } = req.query;
+    
+    // Obtener datos de los últimos 90 días para calcular tendencias
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90);
+    
+    let filter = {
+      serviceDate: { $gte: startDate, $lte: endDate },
+      status: { $ne: 'anulado' }
+    };
+    
+    if (company !== 'all') {
+      filter.companyId = new mongoose.Types.ObjectId(company);
+    }
+    
+    if (contract !== 'all') {
+      filter.contractId = new mongoose.Types.ObjectId(contract);
+    }
+    
+    // Calcular proyecciones basadas en tendencia
+    const dailyData = await ServiceRecord.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$serviceDate' },
+            month: { $month: '$serviceDate' },
+            day: { $dayOfMonth: '$serviceDate' }
+          },
+          dailyValue: { $sum: '$value' },
+          dailyCount: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+    
+    // Calcular métricas de proyección
+    const totalValue = dailyData.reduce((sum, day) => sum + day.dailyValue, 0);
+    const totalDays = dailyData.length;
+    const dailyAverage = totalDays > 0 ? totalValue / totalDays : 0;
+    
+    // Proyecciones
+    const monthlyProjection = dailyAverage * 30;
+    const yearlyProjection = dailyAverage * 365;
+    
+    // Calcular velocidad de consumo (últimos 30 días)
+    const last30Days = dailyData.slice(-30);
+    const burnRate = last30Days.length > 0 ? 
+      last30Days.reduce((sum, day) => sum + day.dailyValue, 0) / last30Days.length : 0;
+    
+    res.json({
+      monthlyProjection: Math.round(monthlyProjection),
+      yearlyProjection: Math.round(yearlyProjection),
+      burnRate: Math.round(burnRate),
+      dailyAverage: Math.round(dailyAverage),
+      dataPoints: dailyData.length,
+      lastUpdated: new Date()
+    });
+    
+  } catch (error) {
+    console.error('Error en getProjections:', error);
+    res.status(500).json({
+      message: 'Error al calcular proyecciones',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
-    getDashboardStats,
-    getRecentServices
+  getDashboardStats, // Mantener el original
+  getDashboardStatsAdvanced, // Nuevo endpoint con filtros avanzados
+  getProjections, // Nuevo endpoint para proyecciones
+  getRecentServices // Mantener el original
 };

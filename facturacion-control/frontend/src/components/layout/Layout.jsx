@@ -28,7 +28,8 @@ import {
   Business as BusinessIcon,
   MedicalServices,
   AttachMoney,
-  InsertDriveFile as ContractIcon
+  InsertDriveFile as ContractIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -52,6 +53,7 @@ const Layout = ({ children }) => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Servicios', icon: <ServicesIcon />, path: '/services' },
+    { text: 'Dashboard Avanzado', icon: <AssessmentIcon />, path: '/advanced-dashboard' },
     // Configuración y catálogos
     { divider: true },
     { text: 'Empresas', icon: <BusinessIcon />, path: '/companies' },

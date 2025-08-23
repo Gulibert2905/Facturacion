@@ -7,14 +7,12 @@ import {
   Typography, 
   Box,
   Paper,
-  
   CircularProgress,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
   IconButton,
-  
   Alert,
   Snackbar,
   Chip
@@ -49,8 +47,9 @@ import {
 import useApi from '../hooks/useApi';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 
+
 // Colores para los gráficos
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B'];
+const COLORS = ['#204888ff', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6B6B'];
 
 // Componente para mostrar métricas en tarjetas
 const MetricCard = memo(({ title, value, icon, color, trend, trendValue, loading, subtitle }) => {

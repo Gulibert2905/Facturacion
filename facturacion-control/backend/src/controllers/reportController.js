@@ -8,51 +8,95 @@ const ExcelJS = require('exceljs');
 const generateReport = async (req, res) => {
   try {
     const { filters, columns } = req.body;
-    console.log('Filtros recibidos:', filters);
+    console.log('🔍 Filtros recibidos en backend:', JSON.stringify(filters, null, 2));
     
     let query = {};
     
-    // Filtros de fecha
+    // Validar y procesar filtros de fecha
     if (filters.startDate && filters.endDate) {
-      query.serviceDate = {
-        $gte: new Date(filters.startDate),
-        $lte: new Date(filters.endDate)
-      };
+      try {
+        // Crear fechas desde strings ISO
+        const startDate = new Date(filters.startDate);
+        const endDate = new Date(filters.endDate);
+        
+        // Validar que las fechas son válidas
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'Fechas inválidas proporcionadas'
+          });
+        }
+        
+        // Ajustar la fecha de fin para incluir todo el día
+        endDate.setHours(23, 59, 59, 999);
+        
+        query.serviceDate = {
+          $gte: startDate,
+          $lte: endDate
+        };
+        
+        console.log('📅 Query de fechas:', {
+          start: startDate.toISOString(),
+          end: endDate.toISOString()
+        });
+      } catch (error) {
+        console.error('Error procesando fechas:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Error al procesar las fechas proporcionadas'
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Las fechas de inicio y fin son obligatorias'
+      });
     }
 
-    // Filtro de empresas - Manejo del caso "all" o array vacío como "todos"
-    if (filters.companies && filters.companies.length > 0 && !filters.companies.includes('all')) {
-      query.companyId = { 
-        $in: filters.companies
-      };
+    // Filtros opcionales - solo aplicar si hay valores específicos
+    if (filters.companies && filters.companies.length > 0) {
+      query.companyId = { $in: filters.companies };
+      console.log('🏢 Filtro empresas aplicado:', filters.companies);
     }
 
-    // Filtro de contratos - Manejo del caso array vacío como "todos"
     if (filters.contracts && filters.contracts.length > 0) {
       query.contractId = { $in: filters.contracts };
+      console.log('📋 Filtro contratos aplicado:', filters.contracts);
     }
 
-    // Filtros adicionales si los proporcionas
+    console.log('🔍 Query MongoDB final:', JSON.stringify(query, null, 2));
+
+    // Ejecutar consulta con populate para obtener datos relacionados
+    const data = await ServiceRecord.find(query)
+      .populate('patientId')
+      .populate('companyId') 
+      .populate('contractId')
+      .sort({ serviceDate: -1 }) // Ordenar por fecha descendente
+      .lean();
+
+    console.log(`📊 Registros encontrados: ${data.length}`);
+
+    // Filtros adicionales en memoria para campos de Patient
+    let filteredData = data;
+    
     if (filters.municipalities && filters.municipalities.length > 0) {
-      query['patientId.municipality'] = { $in: filters.municipalities };
+      filteredData = filteredData.filter(record => 
+        record.patientId && filters.municipalities.includes(record.patientId.municipality)
+      );
+      console.log(`🏘️ Después de filtro municipios: ${filteredData.length}`);
     }
 
     if (filters.regimens && filters.regimens.length > 0) {
-      query['patientId.regimen'] = { $in: filters.regimens };
+      filteredData = filteredData.filter(record => 
+        record.patientId && filters.regimens.includes(record.patientId.regimen)
+      );
+      console.log(`🏥 Después de filtro regímenes: ${filteredData.length}`);
     }
 
-    console.log('Query construida:', JSON.stringify(query, null, 2));
-
-    const data = await ServiceRecord.find(query)
-      .populate('patientId')
-      .populate('companyId')
-      .populate('contractId')
-      .lean();
-
-    console.log(`Registros encontrados: ${data.length}`);
-
-    const formattedData = data.map(record => {
+    // Formatear los datos según las columnas solicitadas
+    const formattedData = filteredData.map(record => {
       const row = {};
+      
       columns.forEach(col => {
         switch(col) {
           case 'documentNumber':
@@ -63,13 +107,13 @@ const generateReport = async (req, res) => {
             break;
           case 'serviceDate':
             row[col] = record.serviceDate ? 
-              new Date(record.serviceDate).toLocaleDateString() : '';
+              record.serviceDate.toISOString().split('T')[0] : '';
             break;
           case 'cupsCode':
             row[col] = record.cupsCode || '';
             break;
           case 'value':
-            row[col] = record.value || 0;
+            row[col] = Number(record.value) || 0;
             break;
           case 'authorization':
             row[col] = record.authorization || '';
@@ -99,7 +143,7 @@ const generateReport = async (req, res) => {
       return row;
     });
 
-    // Calcular totales
+    // Calcular totales y estadísticas
     const totals = {
       totalServices: formattedData.length,
       totalValue: formattedData.reduce((sum, row) => sum + (row.value || 0), 0),
@@ -115,6 +159,11 @@ const generateReport = async (req, res) => {
       }, {})
     };
 
+    console.log('✅ Reporte generado exitosamente:', {
+      totalRecords: formattedData.length,
+      totalValue: totals.totalValue
+    });
+
     res.json({
       success: true,
       data: formattedData,
@@ -122,16 +171,18 @@ const generateReport = async (req, res) => {
       metadata: {
         query: query,
         recordsFound: data.length,
-        appliedFilters: filters
+        recordsAfterFiltering: formattedData.length,
+        appliedFilters: filters,
+        timestamp: new Date().toISOString()
       }
     });
 
   } catch (error) {
-    console.error('Error en generateReport:', error);
+    console.error('❌ Error en generateReport:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Error al generar reporte',
-      error: error.message
+      message: 'Error interno del servidor al generar reporte',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
     });
   }
 };

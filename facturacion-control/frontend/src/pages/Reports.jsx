@@ -127,7 +127,7 @@ function Reports() {
   // Constantes y conversiones para opciones
   const regimensData = useMemo(() => ['Subsidiado', 'Contributivo'], []);
   
-  // Memoización de opciones formateadas
+  // Memorización de opciones formateadas
   const formattedOptions = useMemo(() => {
     return {
       companies: [
@@ -218,14 +218,52 @@ const filterConfig = [
 
 // Manejo de filtros
 const handleFilterChange = (newFilters) => {
-  // Lógica especial para manejar dateRange
+  console.log('🔍 Filtros recibidos en handleFilterChange:', newFilters);
+  
+  // Crear una copia de los filtros para evitar mutación
+  const processedFilters = { ...newFilters };
+  
+  // Lógica específica para manejar dateRange
   if (newFilters.dateRange) {
-    newFilters.startDate = newFilters.dateRange.from;
-    newFilters.endDate = newFilters.dateRange.to;
-    delete newFilters.dateRange;
+    let startDate = null;
+    let endDate = null;
+    
+    // Manejar diferentes formatos de fecha que pueden venir de AdvancedFilters
+    if (newFilters.dateRange.from) {
+      try {
+        const fromDate = new Date(newFilters.dateRange.from);
+        // Asegurar que la fecha es válida y convertir a formato ISO (solo fecha)
+        if (!isNaN(fromDate.getTime())) {
+          startDate = fromDate.toISOString().split('T')[0];
+        }
+      } catch (error) {
+        console.error('Error procesando fecha from:', error);
+      }
+    }
+    
+    if (newFilters.dateRange.to) {
+      try {
+        const toDate = new Date(newFilters.dateRange.to);
+        // Asegurar que la fecha es válida y convertir a formato ISO (solo fecha)
+        if (!isNaN(toDate.getTime())) {
+          endDate = toDate.toISOString().split('T')[0];
+        }
+      } catch (error) {
+        console.error('Error procesando fecha to:', error);
+      }
+    }
+    
+    processedFilters.startDate = startDate;
+    processedFilters.endDate = endDate;
+    
+    // Eliminar dateRange ya procesado
+    delete processedFilters.dateRange;
+    
+    console.log('📅 Fechas procesadas:', { startDate, endDate });
   }
   
-  setFilters(newFilters);
+  console.log('✅ Filtros finales procesados:', processedFilters);
+  setFilters(processedFilters);
 };
 
 // Convertir filtros actuales al formato esperado por AdvancedFilters
@@ -296,68 +334,142 @@ const handleApplyFilter = (savedFilter) => {
 
   // Función para generar reporte
   const generateReport = async () => {
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    // Log para depuración
-  console.log('Generando reporte con filtros:', filters);
+  console.log('🚀 Iniciando generación de reporte con filtros:', filters);
 
-    try {
-      // Preparar los filtros para la API
-      const apiFilters = {
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        
-        // Manejar caso especial "all" para empresas
-        companies: filters.companies.includes('all') 
-          ? [] // Enviar array vacío para indicar todas
-          : filters.companies,
-        
-        // Manejar caso especial "all" para contratos
-        contracts: filters.contracts.includes('all')
-          ? [] // Enviar array vacío para indicar todos
-          : filters.contracts,
-        
-        // Manejar caso especial "all" para municipios
-        municipalities: filters.municipalities.includes('all')
-          ? [] // Enviar array vacío para indicar todos
-          : filters.municipalities,
-        
-        // Manejar caso especial "all" para regímenes
-        regimens: filters.regimens.includes('all')
-          ? [] // Enviar array vacío para indicar todos
-          : filters.regimens
-      };
-
-      // Validar los filtros antes de enviar
-      const validationResult = customValidationService.validateRipsGeneration(apiFilters, filters);
-      //const validationResult = validationService.validateRipsGeneration(apiFilters);
-      if (!validationResult.isValid) {
-        setError(validationResult.errors.join(', '));
-        setLoading(false);
-        return;
-      }
-
-      // Enviar solicitud a la API
-      const response = await apiService.post('/reports/generate', {
-        filters: apiFilters,
-        columns: selectedColumns
-      });
-
-      // Actualizar datos del reporte
-      if (response && response.success) {
-        setReportData(response.data || []);
-        setReportSummary(response.totals || null);
-      } else {
-        throw new Error(response.message || 'Error al generar reporte');
-      }
-    } catch (error) {
-      console.error('Error generando reporte:', error);
-      setError(error.message || 'Error al generar el reporte. Por favor intente nuevamente.');
-    } finally {
+  try {
+    // Validar fechas obligatorias PRIMERO
+    if (!filters.startDate || !filters.endDate) {
+      const errorMsg = 'Las fechas de inicio y fin son obligatorias para generar el reporte';
+      setError(errorMsg);
+      showError(errorMsg, { title: 'Fechas requeridas' });
       setLoading(false);
+      return;
     }
-  };
+
+    // Validar que las fechas sean válidas
+    const startDateObj = new Date(filters.startDate);
+    const endDateObj = new Date(filters.endDate);
+    
+    if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+      const errorMsg = 'Las fechas proporcionadas no son válidas';
+      setError(errorMsg);
+      showError(errorMsg, { title: 'Fechas inválidas' });
+      setLoading(false);
+      return;
+    }
+
+    // Validar que la fecha de inicio no sea mayor que la de fin
+    if (startDateObj > endDateObj) {
+      const errorMsg = 'La fecha de inicio no puede ser mayor que la fecha de fin';
+      setError(errorMsg);
+      showError(errorMsg, { title: 'Rango de fechas inválido' });
+      setLoading(false);
+      return;
+    }
+
+    // Preparar los filtros para la API con manejo especial de arrays vacíos y "all"
+    const apiFilters = {
+      // Fechas ya validadas en formato ISO
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      
+      // Empresas: si incluye 'all' o está vacío, enviar array vacío
+      companies: (filters.companies?.includes('all') || !filters.companies?.length) 
+        ? [] 
+        : filters.companies.filter(id => id !== 'all'),
+      
+      // Contratos: mismo manejo
+      contracts: (filters.contracts?.includes('all') || !filters.contracts?.length) 
+        ? [] 
+        : filters.contracts.filter(id => id !== 'all'),
+      
+      // Municipios: mismo manejo
+      municipalities: (filters.municipalities?.includes('all') || !filters.municipalities?.length) 
+        ? [] 
+        : filters.municipalities.filter(id => id !== 'all'),
+      
+      // Regímenes: mismo manejo
+      regimens: (filters.regimens?.includes('all') || !filters.regimens?.length) 
+        ? [] 
+        : filters.regimens.filter(id => id !== 'all')
+    };
+
+    console.log('📤 Filtros enviados a la API:', apiFilters);
+
+    // Validación adicional usando el servicio personalizado
+    const validationResult = customValidationService.validateRipsGeneration(apiFilters, filters);
+    if (!validationResult.isValid) {
+      const errorMsg = validationResult.errors.join(', ');
+      setError(errorMsg);
+      showError(errorMsg, { title: 'Validación fallida' });
+      setLoading(false);
+      return;
+    }
+
+    // Mostrar indicador de progreso
+    const progressNotification = showInfo('Generando reporte...', {
+      title: 'Procesando',
+      processStatus: 'processing'
+    });
+
+    // Realizar la solicitud a la API
+    const response = await apiService.post('/reports/generate', {
+      filters: apiFilters,
+      columns: selectedColumns
+    });
+
+    console.log('📥 Respuesta de la API:', response);
+
+    // Procesar la respuesta
+    if (response?.success) {
+      const data = response.data || [];
+      const totals = response.totals || null;
+      
+      setReportData(data);
+      setReportSummary(totals);
+
+      // Actualizar notificación de progreso
+      if (data.length === 0) {
+        showWarning('No se encontraron datos para los filtros seleccionados', {
+          id: progressNotification,
+          title: 'Sin resultados',
+          processStatus: 'completed'
+        });
+      } else {
+        showSuccess(`Reporte generado exitosamente con ${data.length} registros`, {
+          id: progressNotification,
+          title: 'Reporte completado',
+          processStatus: 'completed'
+        });
+      }
+    } else {
+      throw new Error(response?.message || 'Error al generar reporte');
+    }
+
+  } catch (error) {
+    console.error('❌ Error generando reporte:', error);
+    
+    let errorMessage = 'Error al generar el reporte. Por favor intente nuevamente.';
+    
+    // Manejar diferentes tipos de errores
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    setError(errorMessage);
+    showError(errorMessage, { 
+      title: 'Error de generación',
+      description: 'Verifique los filtros y su conexión a internet'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Manejadores para el menú de exportación
 const handleExportClick = (event) => {
