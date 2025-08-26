@@ -305,10 +305,53 @@ const getRegimens = async (req, res) => {
   }
 };
 
+const getExportTemplates = async (req, res) => {
+  try {
+    const templates = await ExportTemplate.find()
+      .populate('empresaId', 'name')
+      .sort({ createdAt: -1 });
+    
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const createExportTemplate = async (req, res) => {
+  try {
+    const template = new ExportTemplate(req.body);
+    await template.save();
+    
+    const populatedTemplate = await ExportTemplate.findById(template._id)
+      .populate('empresaId', 'name');
+    
+    res.status(201).json(populatedTemplate);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+const updateExportTemplate = async (req, res) => {
+  try {
+    const template = await ExportTemplate.findByIdAndUpdate(
+      req.params.id, 
+      req.body, 
+      { new: true }
+    ).populate('empresaId', 'name');
+    
+    res.json(template);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
 module.exports = {
   generateReport,
   exportReport,
   getMunicipalities,
   getDepartments,
-  getRegimens
+  getRegimens,
+  getExportTemplates,
+  createExportTemplate,
+  updateExportTemplate,
+  
 };

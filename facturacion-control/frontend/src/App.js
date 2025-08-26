@@ -15,6 +15,7 @@ import CompanyManagement from './pages/CompanyManagement';
 import ContractManagement from './pages/ContractManagement';
 import AppProviders from './components/AppProviders';
 import AdvancedDashboard from './pages/AdvancedDashboard';
+import AdvancedReports from './pages/AdvancedReports';
 
 // Componente para capturar errores
 class ErrorBoundary extends React.Component {
@@ -67,7 +68,7 @@ function App() {
             <Reports />
           </Layout>
         } />
-        
+        <Route path="/advanced-reports" element={<AdvancedReports />} />
         {/* Utilizar ErrorBoundary en los nuevos componentes */}
         <Route path="/companies" element={
           <Layout>

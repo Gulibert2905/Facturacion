@@ -6,7 +6,12 @@ const {
   exportReport, 
   getMunicipalities,
   getDepartments,
-  getRegimens
+  getRegimens,
+  //generateAdvancedReport,
+  getExportTemplates,
+  createExportTemplate,
+  updateExportTemplate,
+  
 } = require('../controllers/reportController');
 
 // Rutas para reportes

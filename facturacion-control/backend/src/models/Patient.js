@@ -55,6 +55,8 @@ const patientSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    ciudadNacimiento: String,
+ciudadExpedicion: String,
     zone: {
         type: String,
         default: 'U'

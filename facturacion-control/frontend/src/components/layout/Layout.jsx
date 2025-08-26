@@ -63,6 +63,7 @@ const Layout = ({ children }) => {
     // Operaciones
     { divider: true },
     { text: 'Reportes', icon: <ReportsIcon />, path: '/reports' },
+    { text: 'Reportes Avanzados', icon: <AssessmentIcon />, path: '/advanced-reports' },
     { text: 'Importar Datos', icon: <ImportIcon />, path: '/import' },
     // Análisis
     { divider: true },
