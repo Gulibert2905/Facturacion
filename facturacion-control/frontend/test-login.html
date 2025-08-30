@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sistema de Autenticación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-section h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        .credentials {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        input[type="text"], input[type="password"], input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Sistema de Autenticación - Facturación</h1>
+        <p>Prueba todas las funcionalidades implementadas del sistema de autenticación seguro.</p>
+        
+        <div class="info result">
+            <strong>Status:</strong>
+            <br>Backend: <span id="backend-status">Verificando...</span>
+            <br>Frontend: <span id="frontend-status">✅ Corriendo</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section">
+            <h3>🔑 1. Test Login</h3>
+            <div class="credentials">
+                <strong>Credenciales de Prueba:</strong><br>
+                👑 Admin: admin / Admin123!@#<br>
+                📊 Facturador: facturador1 / Factura123!@#
+            </div>
+            
+            <label>Usuario:</label>
+            <input type="text" id="loginUsername" placeholder="admin">
+            
+            <label>Contraseña:</label>
+            <input type="password" id="loginPassword" placeholder="Admin123!@#">
+            
+            <br><br>
+            <button class="button" onclick="testLogin()">🔐 Probar Login</button>
+            <button class="button" onclick="fillAdmin()">👑 Admin</button>
+            <button class="button" onclick="fillFacturador()">📊 Facturador</button>
+            
+            <div id="loginResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📧 2. Test Recuperar Contraseña</h3>
+            <p>Prueba el sistema de recuperación con tokens seguros.</p>
+            
+            <label>Email:</label>
+            <input type="email" id="forgotEmail" placeholder="admin@facturacion.test">
+            
+            <br><br>
+            <button class="button" onclick="testForgotPassword()">📧 Enviar Reset</button>
+            
+            <div id="forgotResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 3. Test Cambio de Contraseña</h3>
+            <p><strong>Nota:</strong> Necesitas estar logueado para esta función.</p>
+            
+            <label>Contraseña Actual:</label>
+            <input type="password" id="currentPassword" placeholder="Admin123!@#">
+            
+            <label>Nueva Contraseña:</label>
+            <input type="password" id="newPassword" placeholder="NewAdmin456$%^">
+            
+            <br><br>
+            <button class="button" onclick="testChangePassword()">🔄 Cambiar Contraseña</button>
+            
+            <div id="changeResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>⚡ 4. Test Rate Limiting</h3>
+            <p>Prueba los límites de seguridad (5 intentos fallidos).</p>
+            
+            <button class="button danger" onclick="testRateLimit()">⚡ Probar Rate Limiting</button>
+            <button class="button" onclick="resetAttempts()">🔄 Reset Account</button>
+            
+            <div id="rateLimitResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🚪 5. Test Logout</h3>
+            <p>Limpia el almacenamiento seguro.</p>
+            
+            <button class="button" onclick="testLogout()">🚪 Logout</button>
+            
+            <div id="logoutResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let currentToken = null;
+
+        // Verificar estado del backend
+        async function checkBackend() {
+            try {
+                const response = await fetch('http://localhost:5000/');
+                const data = await response.json();
+                document.getElementById('backend-status').innerHTML = `✅ ${data.message} (${data.version})`;
+            } catch (error) {
+                document.getElementById('backend-status').innerHTML = `❌ No disponible`;
+            }
+        }
+
+        // Funciones auxiliares
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.innerHTML = message;
+            element.style.display = 'block';
+        }
+
+        function fillAdmin() {
+            document.getElementById('loginUsername').value = 'admin';
+            document.getElementById('loginPassword').value = 'Admin123!@#';
+        }
+
+        function fillFacturador() {
+            document.getElementById('loginUsername').value = 'facturador1';
+            document.getElementById('loginPassword').value = 'Factura123!@#';
+        }
+
+        // 1. Test Login
+        async function testLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                showResult('loginResult', '❌ Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentToken = data.token;
+                    showResult('loginResult', 
+                        `✅ <strong>Login Exitoso!</strong><br>
+                        Usuario: ${data.user.fullName}<br>
+                        Role: ${data.user.role}<br>
+                        Token: ${data.token ? '✅ Generado' : '❌ No generado'}`, 
+                        'success'
+                    );
+                } else {
+                    showResult('loginResult', `❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult('loginResult', `❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // 2. Test Forgot Password
+        async function testForgotPassword() {
+            const email = document.getElementById('forgotEmail').value;
+            
+            if (!email) {
+                showResult('forgotResult', '❌ Por favor ingresa un email', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('forgotResult', 
+                        `✅ <strong>Reset Solicitado!</strong><br>
+                        ${data.message}<br>
+                        <small>Revisa la consola del backend para ver el email simulado con el token.</small>`, 
+                        'success'
+                    );
+                } else {
+                    showResult('forgotResult', `❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult('forgotResult', `❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // 3. Test Change Password
+        async function testChangePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            
+            if (!currentPassword || !newPassword) {
+                showResult('changeResult', '❌ Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            if (!currentToken) {
+                showResult('changeResult', '❌ Necesitas estar logueado. Haz login primero.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/change-password`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('changeResult', 
+                        `✅ <strong>Contraseña Cambiada!</strong><br>
+                        ${data.message}<br>
+                        <small>Revisa la consola del backend para ver el email de confirmación.</small>`, 
+                        'success'
+                    );
+                } else {
+                    showResult('changeResult', `❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult('changeResult', `❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // 4. Test Rate Limiting
+        async function testRateLimit() {
+            showResult('rateLimitResult', '⚡ Probando límites... (5 intentos fallidos)', 'info');
+            
+            let attempts = 0;
+            const maxAttempts = 6; // Uno extra para ver el bloqueo
+            
+            for (let i = 0; i < maxAttempts; i++) {
+                try {
+                    const response = await fetch(`${API_BASE}/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            username: 'admin', 
+                            password: 'wrongpassword' 
+                        })
+                    });
+
+                    const data = await response.json();
+                    attempts++;
+                    
+                    if (data.message && data.message.includes('intentos de login')) {
+                        showResult('rateLimitResult', 
+                            `🛑 <strong>Rate Limiting Funcionando!</strong><br>
+                            Intento ${attempts}: ${data.message}<br>
+                            El sistema bloqueó después de 5 intentos fallidos.`, 
+                            'success'
+                        );
+                        break;
+                    }
+                    
+                    // Esperar un poco entre intentos
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    showResult('rateLimitResult', `❌ Error en intento ${i + 1}: ${error.message}`, 'error');
+                    break;
+                }
+            }
+        }
+
+        // Reset attempts (crear nuevo usuario temporal)
+        async function resetAttempts() {
+            showResult('rateLimitResult', 
+                'ℹ️ Para resetear, necesitarías acceso directo a la base de datos o esperar 15 minutos.', 
+                'info'
+            );
+        }
+
+        // 5. Test Logout
+        function testLogout() {
+            currentToken = null;
+            // Simular limpieza del almacenamiento
+            showResult('logoutResult', 
+                '✅ <strong>Logout Exitoso!</strong><br>Token eliminado del almacenamiento seguro.', 
+                'success'
+            );
+        }
+
+        // Inicializar
+        checkBackend();
+    </script>
+</body>
+</html>

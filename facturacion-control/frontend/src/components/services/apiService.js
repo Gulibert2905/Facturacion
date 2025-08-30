@@ -1,11 +1,12 @@
 // src/services/apiService.js
+import secureStorage from '../../utils/secureStorage';
 
 /**
  * Servicio optimizado para realizar llamadas a la API con cache y manejo de errores
  */
 class ApiService {
     constructor() {
-      this.baseUrl = 'http://localhost:5000/api';
+      this.baseUrl = 'http://localhost:8080/api';
       this.cache = new Map();
       this.pendingRequests = new Map();
       this.DEFAULT_CACHE_TIME = 5 * 60 * 1000; // 5 minutos en milisegundos
@@ -282,7 +283,7 @@ class ApiService {
       };
       
       // Añadir token de autenticación si existe
-      const token = localStorage.getItem('token');
+      const token = secureStorage.getItem('token');
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }

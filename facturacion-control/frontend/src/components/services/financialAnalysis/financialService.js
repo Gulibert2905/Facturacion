@@ -1,5 +1,5 @@
   // src/services/financialAnalysis/financialService.js
-  import apiService from '../apiService';
+  import { apiService } from '../apiService';
 
   /**
    * Servicio para obtener y procesar datos financieros

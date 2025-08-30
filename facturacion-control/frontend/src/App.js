@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Services from './pages/Services';
 import Reports from './pages/Reports';
@@ -16,6 +18,9 @@ import ContractManagement from './pages/ContractManagement';
 import AppProviders from './components/AppProviders';
 import AdvancedDashboard from './pages/AdvancedDashboard';
 import AdvancedReports from './pages/AdvancedReports';
+import UserManagement from './pages/UserManagement';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Unauthorized from './pages/Unauthorized';
 
 // Componente para capturar errores
 class ErrorBoundary extends React.Component {
@@ -53,73 +58,116 @@ function App() {
     <AppProviders>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={
-          <Layout>
-            <Dashboard />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/services" element={
-          <Layout>
-            <Services />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Services />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/reports" element={
-          <Layout>
-            <Reports />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <Reports />
+            </Layout>
+          </ProtectedRoute>
         } />
-        <Route path="/advanced-reports" element={<AdvancedReports />} />
+        <Route path="/advanced-reports" element={
+          <ProtectedRoute>
+            <AdvancedReports />
+          </ProtectedRoute>
+        } />
         {/* Utilizar ErrorBoundary en los nuevos componentes */}
         <Route path="/companies" element={
-          <Layout>
-            <ErrorBoundary>
-              <CompanyManagement />
-            </ErrorBoundary>
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <ErrorBoundary>
+                <CompanyManagement />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/contracts" element={
-          <Layout>
-            <ErrorBoundary>
-              <ContractManagement />
-            </ErrorBoundary>
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <ErrorBoundary>
+                <ContractManagement />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/cups" element={
-          <Layout>
-            <ErrorBoundary>
-              <CupsManagement />
-            </ErrorBoundary>
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <ErrorBoundary>
+                <CupsManagement />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/tariffs" element={
-          <Layout>
-            <ErrorBoundary>
-              <ContractTariffs />
-            </ErrorBoundary>
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <ErrorBoundary>
+                <ContractTariffs />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
         } />
-        <Route path="/advanced-dashboard" element={<AdvancedDashboard />} />
+        <Route path="/advanced-dashboard" element={
+          <ProtectedRoute>
+            <AdvancedDashboard />
+          </ProtectedRoute>
+        } />
         <Route path="/import" element={
-          <Layout>
-            <ImportData />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <ImportData />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/audit" element={
-          <Layout>
-            <AuditDashboard />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <AuditDashboard />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/financial" element={
-          <Layout>
-            <FinancialDashboard />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <FinancialDashboard />
+            </Layout>
+          </ProtectedRoute>
         } />
         <Route path="/rips" element={
-          <Layout>
-            <RipsGenerator />
-          </Layout>
+          <ProtectedRoute>
+            <Layout>
+              <RipsGenerator />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/users" element={
+          <ProtectedRoute requiredRole="superadmin">
+            <Layout>
+              <ErrorBoundary>
+                <UserManagement />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
         } />
         
+        <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </AppProviders>

@@ -11,6 +11,7 @@ import { es } from 'date-fns/locale';
 // Providers personalizados
 import { LoadingProvider } from '../contexts/LoadingContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { AuthProvider } from '../contexts/AuthContext';
 // Import new context providers
 import { AuditProvider } from '../contexts/AuditContext';
 import { FinancialProvider } from '../contexts/FinancialContext';
@@ -113,15 +114,17 @@ const AppProviders = ({ children }) => {
           <NotificationProvider>
             <LoadingProvider>
               <BrowserRouter>
-                {/* Add the new context providers */}
-                <AuditProvider>
-                  <FinancialProvider>
-                    <RipsProvider>
-                      <GlobalLoadingOverlay />
-                      {children}
-                    </RipsProvider>
-                  </FinancialProvider>
-                </AuditProvider>
+                <AuthProvider>
+                  {/* Add the new context providers */}
+                  <AuditProvider>
+                    <FinancialProvider>
+                      <RipsProvider>
+                        <GlobalLoadingOverlay />
+                        {children}
+                      </RipsProvider>
+                    </FinancialProvider>
+                  </AuditProvider>
+                </AuthProvider>
               </BrowserRouter>
             </LoadingProvider>
           </NotificationProvider>

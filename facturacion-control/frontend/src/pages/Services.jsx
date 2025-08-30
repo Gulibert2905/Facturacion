@@ -51,7 +51,7 @@ const [prefacturationSession, setPrefacturationSession] = useState({
   contract: null,
   preBillId: null  
 });
-const [setSavedPreBills] = useState([]);
+const [savedPreBills, setSavedPreBills] = useState([]);
 const [isLoading, setIsLoading] = useState(false);
 
 
@@ -158,10 +158,25 @@ const loadContracts = async (companyId) => {
 
 const loadPatientServices = async (docNumber) => {
   try {
-    // Usar el parámetro recibido, no la variable de estado
-    console.log('Cargando servicios para documento:', docNumber);
+    // Validar y limpiar el número de documento
+    const cleanDocNumber = docNumber ? String(docNumber).trim() : '';
     
-    const response = await fetch(`http://localhost:5000/api/services/patients/${docNumber}/services`);
+    if (!cleanDocNumber || cleanDocNumber === '') {
+      console.error('Número de documento vacío');
+      setAlertMessage('Número de documento requerido');
+      setShowAlert(true);
+      return;
+    }
+
+    console.log('Cargando servicios para documento:', cleanDocNumber);
+    
+    const response = await fetch(`http://localhost:5000/api/services/patients/${encodeURIComponent(cleanDocNumber)}/services`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
     const data = await response.json();
     
     console.log('Datos recibidos:', data);
@@ -177,7 +192,11 @@ const loadPatientServices = async (docNumber) => {
       }
     } else {
       setServices([]);
-      setAlertMessage(data.message || 'Error al cargar servicios');
+      if (response.status === 401) {
+        setAlertMessage('Sesión expirada. Por favor inicie sesión nuevamente.');
+      } else {
+        setAlertMessage(data.message || 'Error al cargar servicios');
+      }
       setShowAlert(true);
     }
   } catch (error) {
@@ -215,17 +234,43 @@ const handleStartPreBilling = () => {
   }
 };
 
-const handleSearchPatient = async () => {
+const handleSearchPatient = async (docNumber = documentNumber) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/patients/${documentNumber}`);
-    const data = await response.json();
-    if (response.ok) {
-      setPatient(data);
-      // Usar el número de documento, NO el ID del paciente
-      loadPatientServices(documentNumber);
-    } else {
-      setAlertMessage(data.message || 'Paciente no encontrado');
+    // Validar y limpiar el número de documento
+    const cleanDocNumber = docNumber ? String(docNumber).trim() : '';
+    
+    if (!cleanDocNumber || cleanDocNumber === '') {
+      setAlertMessage('Ingrese un número de documento válido');
       setShowAlert(true);
+      return;
+    }
+
+    console.log('Buscando paciente con documento:', cleanDocNumber);
+    
+    const response = await fetch(`http://localhost:5000/api/patients/${encodeURIComponent(cleanDocNumber)}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      console.log('Paciente encontrado:', data);
+      setPatient(data.patient || data); // Manejar diferentes estructuras de respuesta
+      await loadPatientServices(cleanDocNumber);
+    } else {
+      console.error('Error buscando paciente:', data);
+      if (response.status === 404) {
+        setAlertMessage(`No se encontró un paciente con documento: ${cleanDocNumber}`);
+      } else if (response.status === 401) {
+        setAlertMessage('Sesión expirada. Por favor inicie sesión nuevamente.');
+      } else {
+        setAlertMessage(data.message || 'Error al buscar paciente');
+      }
+      setShowAlert(true);
+      setPatient(null);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -523,69 +568,55 @@ const handleExportResponse = async (response) => {
 // Función para continuar con prefactura existente
 const handleContinuePreBill = async (preBill) => {
   try {
-    // Obtener detalles completos de la prefactura
     const response = await fetch(`http://localhost:5000/api/prebills/${preBill._id}`);
     
     if (response.ok) {
       const fullPreBill = await response.json();
       
-      // Actualizar la selección de empresa y contrato
       setSelectedCompany(fullPreBill.companyId._id);
       setSelectedContract(fullPreBill.contractId._id);
 
-      // Cargar el paciente
-      if (fullPreBill.patientId) {
+      // Cargar el paciente PRIMERO
+      if (fullPreBill.patientId && fullPreBill.patientId.documentNumber) {
         setDocumentNumber(fullPreBill.patientId.documentNumber);
-        await handleSearchPatient(); // Buscar paciente para cargar servicios
-      }
-
-      if (fullPreBill.services && fullPreBill.services.length > 0) {
-        // Obtener los detalles completos de los servicios
-        const servicesToLoad = [];
+        setPatient(fullPreBill.patientId);
         
-        for (const service of fullPreBill.services) {
-          // Buscar si el servicio está en los servicios cargados
-          const existingService = services.find(s => s._id === service.serviceId);
+        // Cargar servicios directamente con el documento
+        await loadPatientServices(fullPreBill.patientId.documentNumber);
+        
+        // DESPUÉS cargar los servicios seleccionados
+        if (fullPreBill.services && fullPreBill.services.length > 0) {
+          const servicesToLoad = fullPreBill.services.map(service => ({
+            _id: service.serviceId,
+            cupsCode: service.cupsCode,
+            value: service.value,
+            serviceDate: service.serviceDate,
+            prefacturedAt: fullPreBill.createdAt,
+            description: service.description || ''
+          }));
           
-          if (existingService) {
-            // Usar el servicio existente con detalles completos
-            servicesToLoad.push({
-              ...existingService,
-              value: service.value,
-              prefacturedAt: fullPreBill.createdAt
-            });
-          } else {
-            // Crear un servicio básico con la información disponible
-            servicesToLoad.push({
-              _id: service.serviceId,
-              cupsCode: service.cupsCode,
-              value: service.value,
-              serviceDate: service.serviceDate,
-              prefacturedAt: fullPreBill.createdAt
-            });
-          }
+          setSelectedServices(servicesToLoad);
         }
         
-        // Establecer los servicios seleccionados
-        setSelectedServices(servicesToLoad);
-      }
-      
-      // Configurar sesión de prefacturación
-      setPrefacturationSession({
-        active: true,
-        company: fullPreBill.companyId._id,
-        contract: fullPreBill.contractId._id,
-        preBillId: fullPreBill._id
-      });
-      
-      // También cargar la autorización y diagnóstico si existen
-      if (fullPreBill.authorization) setAuthorization(fullPreBill.authorization);
-      if (fullPreBill.diagnosis) setDiagnosis(fullPreBill.diagnosis);
+        // Configurar sesión
+        setPrefacturationSession({
+          active: true,
+          company: fullPreBill.companyId._id,
+          contract: fullPreBill.contractId._id,
+          preBillId: fullPreBill._id
+        });
+        
+        if (fullPreBill.authorization) setAuthorization(fullPreBill.authorization);
+        if (fullPreBill.diagnosis) setDiagnosis(fullPreBill.diagnosis);
 
-      setShowServiceSelection(true);
-      setShowActivePreBills(false);
-      setAlertMessage('Prefacturación cargada correctamente');
-      setShowAlert(true);
+        setShowServiceSelection(true);
+        setShowActivePreBills(false);
+        setAlertMessage('Prefacturación cargada correctamente');
+        setShowAlert(true);
+      } else {
+        setAlertMessage('Error: No se encontró información del paciente');
+        setShowAlert(true);
+      }
     }
   } catch (error) {
     console.error('Error:', error);

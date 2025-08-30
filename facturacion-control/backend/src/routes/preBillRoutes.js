@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect, requirePermission, MODULES, ACTIONS } = require('../middleware/auth');
 const PreBill = require('../models/PreBill');
 const { 
   createPreBill, 
@@ -8,7 +9,10 @@ const {
   reprintPreBill 
 } = require('../controllers/preBillController');
 
-router.post('/', async (req, res) => {
+// Todas las rutas requieren autenticación
+router.use(protect);
+
+router.post('/', requirePermission(MODULES.PREBILLS, ACTIONS.CREATE), async (req, res) => {
   try {
     const { companyId, contractId, patientId, services, preBillId } = req.body;
     
@@ -45,12 +49,23 @@ router.post('/', async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
-router.get('/export', exportPreBills);
-router.get('/history', getPreBillHistory);
-router.get('/reprint/:id', reprintPreBill);
+router.get('/export', 
+  requirePermission(MODULES.PREBILLS, ACTIONS.READ), 
+  exportPreBills
+);
+
+router.get('/history', 
+  requirePermission(MODULES.PREBILLS, ACTIONS.READ), 
+  getPreBillHistory
+);
+
+router.get('/reprint/:id', 
+  requirePermission(MODULES.PREBILLS, ACTIONS.READ), 
+  reprintPreBill
+);
 
 // Obtener prefacturas activas
-router.get('/active', async (req, res) => {
+router.get('/active', requirePermission(MODULES.PREBILLS, ACTIONS.READ), async (req, res) => {
   try {
     const { companyId, contractId } = req.query;
     const query = { status: 'parcial' };
@@ -84,7 +99,7 @@ router.get('/active', async (req, res) => {
 });
 
 // Obtener detalle de una prefactura
-router.get('/:id', async (req, res) => {
+router.get('/:id', requirePermission(MODULES.PREBILLS, ACTIONS.READ), async (req, res) => {
   try {
     const preBill = await PreBill.findById(req.params.id)
       .populate('companyId', 'name')
@@ -102,7 +117,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Finalizar una prefactura
-router.patch('/:id/finalize', async (req, res) => {
+router.patch('/:id/finalize', requirePermission(MODULES.PREBILLS, ACTIONS.UPDATE), async (req, res) => {
   try {
     console.log(`[DEBUG] Finalize request received for prebill: ${req.params.id}`);
     
@@ -140,7 +155,7 @@ router.patch('/:id/finalize', async (req, res) => {
   }
 });
 
-router.get('/:id/export-single', async (req, res) => {
+router.get('/:id/export-single', requirePermission(MODULES.PREBILLS, ACTIONS.READ), async (req, res) => {
   try {
     const preBill = await PreBill.findById(req.params.id)
       .populate('companyId')

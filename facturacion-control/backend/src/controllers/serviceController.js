@@ -2,6 +2,8 @@ const Service = require('../models/Service');
 const ServiceRecord = require('../models/ServiceRecord');
 const PreBill = require('../models/PreBill');
 const Patient = require('../models/Patient');
+const { validateServiceRecord } = require('../middleware/serviceValidation');
+const { updateContractValues } = require('../controllers/contractController');
 
 console.log('ServiceController cargado correctamente');
 
@@ -240,10 +242,59 @@ const assignContract = async (req, res) => {
   }
 };
 
+const createServiceRecordEnhanced = async (req, res) => {
+  try {
+    const {
+      documentType,
+      documentNumber,
+      patientName,
+      serviceDate,
+      cupsCode,
+      contractId,
+      value,
+      municipality,
+      observations
+    } = req.body;
+
+    // La validación ya se hizo en el middleware validateServiceRecord
+    
+    const serviceRecord = await ServiceRecord.create({
+      documentType,
+      documentNumber,
+      patientName,
+      serviceDate,
+      cupsCode,
+      contractId,
+      value,
+      municipality,
+      observations,
+      createdBy: req.user?._id
+    });
+
+    // Guardar para el middleware de actualización de contratos
+    res.locals.createdService = serviceRecord;
+
+    res.status(201).json({
+      success: true,
+      data: serviceRecord,
+      message: 'Servicio registrado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('Error creando servicio:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   createServiceRecord,
   getServiceRecords,
   updateRecordStatus,
   getPatientServices,
-  assignContract
+  assignContract,
+  createServiceRecordEnhanced
 };

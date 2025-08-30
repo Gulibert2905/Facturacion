@@ -28,7 +28,13 @@ if (process.env.NODE_ENV !== 'production') {
   logger.add(new transports.Console({
     format: format.combine(
       format.colorize(),
-      format.simple()
+      format.printf((info) => {
+        const timestamp = info.timestamp;
+        const level = info.level;
+        const message = typeof info.message === 'object' ? JSON.stringify(info.message, null, 2) : info.message;
+        const meta = info.metadata ? JSON.stringify(info.metadata, null, 2) : '';
+        return `${timestamp} [${level}]: ${message} ${meta}`;
+      })
     )
   }));
 }

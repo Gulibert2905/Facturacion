@@ -1,5 +1,5 @@
 // src/services/audit/ruleService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para gestión de reglas de auditoría

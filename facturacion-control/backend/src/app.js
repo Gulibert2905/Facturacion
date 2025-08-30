@@ -16,6 +16,7 @@ const preBillRoutes = require('./routes/preBillRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const importRoutes = require('./routes/importRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 
 // Importar nuevas rutas de Fase 3
@@ -40,12 +41,29 @@ connectDB();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use(cors({
-  origin: 'http://localhost:3000',
+// Configuración CORS basada en el entorno
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? (process.env.ALLOWED_ORIGINS || '').split(',').map(url => url.trim())
+      : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    
+    // Permitir requests sin origin (como aplicaciones móviles o Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200 // Para compatibilidad con navegadores legacy
+};
+
+app.use(cors(corsOptions));
 
 // Rutas existentes
 app.use('/api/auth', authRoutes);
@@ -57,6 +75,7 @@ app.use('/api/prebills', preBillRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/import', importRoutes);
+app.use('/api/users', userRoutes);
 
 // Nuevas rutas de la Fase 3
 app.use('/api/rips', ripsRoutes);
