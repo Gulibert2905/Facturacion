@@ -1,5 +1,5 @@
 // src/services/financialAnalysis/kpiService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para el cálculo y procesamiento de KPIs financieros

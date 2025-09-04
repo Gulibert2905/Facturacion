@@ -49,7 +49,13 @@ export const AuthProvider = ({ children }) => {
             const response = await authService.login(username, password);
             
             if (response.success && response.user) {
-                setUser(response.user);
+                // Agregar timestamp para forzar re-render y limpiar estado anterior
+                const userWithTimestamp = {
+                    ...response.user,
+                    _loginTimestamp: Date.now()
+                };
+                
+                setUser(userWithTimestamp);
                 setIsAuthenticated(true);
                 return response;
             } else {
@@ -65,9 +71,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
+        // Limpiar cache, tokens y storage
         authService.logout();
+        
+        // Limpiar estado del usuario
         setUser(null);
         setIsAuthenticated(false);
+        
+        // Usar window.location.replace para evitar historial
+        window.location.replace('/login');
     };
 
     const hasRole = (role) => {

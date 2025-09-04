@@ -1,6 +1,7 @@
 // src/hooks/useApi.js - Corrección para problema de credenciales
 import { useState, useEffect, useCallback } from 'react';
 import { useLoading } from '../contexts/LoadingContext';
+import secureStorage from '../utils/secureStorage';
 
 // Base URL para la API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -48,10 +49,14 @@ const useApi = (endpoint, options = {}) => {
       
       // IMPORTANTE: Cambiar la configuración de credenciales
       // Esto es crucial para resolver el problema de CORS + credentials
+      // Obtener el token de autorización del almacenamiento seguro
+      const token = secureStorage.getItem('token');
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
           ...(params.headers || {})
         },
         credentials: 'same-origin' // Cambiado de 'include' a 'same-origin'
@@ -91,7 +96,7 @@ const useApi = (endpoint, options = {}) => {
         setLoading(false);
       }
     }
-  }, [endpoint, showLoading, hideLoading, withLoading, initialData, defaultParams]);
+  }, [endpoint, showLoading, hideLoading, withLoading, initialData]);
 
   // Efecto para cargar datos al montar el componente
   useEffect(() => {

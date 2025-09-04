@@ -79,7 +79,7 @@ const ruleService = {
    */
   getAllRules: async (filters = {}) => {
     try {
-      return await apiService.get('/api/audit/rules', { params: filters });
+      return await apiService.get('/audit/rules', { params: filters });
     } catch (error) {
       console.error('Error al obtener reglas de auditoría:', error);
       throw error;
@@ -107,7 +107,7 @@ const ruleService = {
    */
   createRule: async (ruleData) => {
     try {
-      return await apiService.post('/api/audit/rules', ruleData);
+      return await apiService.post('/audit/rules', ruleData);
     } catch (error) {
       console.error('Error al crear regla:', error);
       throw error;

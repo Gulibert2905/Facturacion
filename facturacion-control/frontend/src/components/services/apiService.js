@@ -6,7 +6,7 @@ import secureStorage from '../../utils/secureStorage';
  */
 class ApiService {
     constructor() {
-      this.baseUrl = 'http://localhost:8080/api';
+      this.baseUrl = 'http://localhost:5000/api';
       this.cache = new Map();
       this.pendingRequests = new Map();
       this.DEFAULT_CACHE_TIME = 5 * 60 * 1000; // 5 minutos en milisegundos

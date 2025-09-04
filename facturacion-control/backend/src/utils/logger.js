@@ -1,5 +1,6 @@
 // Crea este archivo en backend/src/utils/logger.js
 const winston = require('winston');
+const path = require('path');
 const { format, transports } = winston;
 require('dotenv').config();
 
@@ -11,16 +12,63 @@ const customFormat = format.combine(
   format.json()
 );
 
+// Configuración de transports basada en entorno
+const getTransports = () => {
+  const logTransports = [];
+  
+  // Transport para errores
+  logTransports.push(
+    new transports.File({ 
+      filename: path.join(process.env.LOG_FILE_PATH || 'logs', 'error.log'), 
+      level: 'error',
+      maxsize: process.env.LOG_MAX_SIZE || '10m',
+      maxFiles: process.env.LOG_MAX_FILES || 5,
+      tailable: true
+    })
+  );
+  
+  // Transport para logs combinados
+  logTransports.push(
+    new transports.File({ 
+      filename: path.join(process.env.LOG_FILE_PATH || 'logs', 'combined.log'),
+      maxsize: process.env.LOG_MAX_SIZE || '10m',
+      maxFiles: process.env.LOG_MAX_FILES || 5,
+      tailable: true
+    })
+  );
+  
+  // Transport para auditoría (logs de seguridad)
+  logTransports.push(
+    new transports.File({ 
+      filename: path.join(process.env.LOG_FILE_PATH || 'logs', 'audit.log'),
+      level: 'warn',
+      maxsize: process.env.LOG_MAX_SIZE || '10m',
+      maxFiles: process.env.LOG_MAX_FILES || 10,
+      tailable: true
+    })
+  );
+  
+  // En producción, también enviar a syslog si está disponible
+  if (process.env.NODE_ENV === 'production' && process.env.SYSLOG_ENABLED === 'true') {
+    logTransports.push(
+      new transports.Syslog({
+        host: process.env.SYSLOG_HOST || 'localhost',
+        port: process.env.SYSLOG_PORT || 514,
+        protocol: process.env.SYSLOG_PROTOCOL || 'udp4',
+        facility: 'local0'
+      })
+    );
+  }
+  
+  return logTransports;
+};
+
 // Crear logger
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'warn' : 'debug'),
   format: customFormat,
   defaultMeta: { service: 'facturacion-api' },
-  transports: [
-    // Escribir logs de error y advertencia a archivo
-    new transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new transports.File({ filename: 'logs/combined.log' })
-  ]
+  transports: getTransports()
 });
 
 // En desarrollo, también mostrar logs en consola

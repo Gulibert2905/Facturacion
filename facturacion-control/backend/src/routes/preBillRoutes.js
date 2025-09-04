@@ -12,6 +12,29 @@ const {
 // Todas las rutas requieren autenticación
 router.use(protect);
 
+// Ruta GET básica para listar preBills con filtros
+router.get('/', requirePermission(MODULES.PREBILLS, ACTIONS.READ), async (req, res) => {
+  try {
+    const { status, companyId, contractId } = req.query;
+    const query = {};
+    
+    if (status) query.status = status;
+    if (companyId) query.companyId = companyId;
+    if (contractId) query.contractId = contractId;
+    
+    const preBills = await PreBill.find(query)
+      .populate('companyId', 'name')
+      .populate('contractId', 'name')
+      .populate('patientId', 'documentNumber')
+      .sort({ updatedAt: -1 });
+    
+    res.json(preBills);
+  } catch (error) {
+    console.error('Error al obtener prefacturas:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.post('/', requirePermission(MODULES.PREBILLS, ACTIONS.CREATE), async (req, res) => {
   try {
     const { companyId, contractId, patientId, services, preBillId } = req.body;

@@ -1,5 +1,5 @@
 // src/services/audit/auditService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para gestión de auditorías
@@ -17,7 +17,7 @@ const auditService = {
    */
   runAudit: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/run', params);
+      return await apiService.post('/audit/run', params);
     } catch (error) {
       console.error('Error al ejecutar auditoría:', error);
       throw error;
@@ -31,7 +31,7 @@ const auditService = {
    */
   getAuditResults: async (filters = {}) => {
     try {
-      return await apiService.get('/api/audit/results', { params: filters });
+      return await apiService.get('/audit/results', { params: filters });
     } catch (error) {
       console.error('Error al obtener resultados de auditoría:', error);
       throw error;
@@ -59,7 +59,7 @@ const auditService = {
    */
   verifyServices: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-services', params);
+      return await apiService.post('/audit/verify-services', params);
     } catch (error) {
       console.error('Error al verificar servicios:', error);
       throw error;
@@ -73,7 +73,7 @@ const auditService = {
    */
   validateContracts: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/validate-contracts', params);
+      return await apiService.post('/audit/validate-contracts', params);
     } catch (error) {
       console.error('Error al validar contratos:', error);
       throw error;
@@ -87,7 +87,7 @@ const auditService = {
    */
   detectInconsistencies: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/detect-inconsistencies', params);
+      return await apiService.post('/audit/detect-inconsistencies', params);
     } catch (error) {
       console.error('Error al detectar inconsistencias:', error);
       throw error;
@@ -154,7 +154,7 @@ const auditService = {
    */
   getAuditStats: async (params = {}) => {
     try {
-      return await apiService.get('/api/audit/stats', { params });
+      return await apiService.get('/audit/stats', { params });
     } catch (error) {
       console.error('Error al obtener estadísticas de auditoría:', error);
       throw error;

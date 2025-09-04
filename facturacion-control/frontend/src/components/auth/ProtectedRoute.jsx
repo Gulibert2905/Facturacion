@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
 
 const ProtectedRoute = ({ children, requiredRole = null, requiredPermission = null }) => {
-    const { isAuthenticated, loading, user, hasRole, hasPermission } = useAuth();
+    const { isAuthenticated, loading, user, hasRole, hasPermission, isAdmin, isSuperAdmin } = useAuth();
     const location = useLocation();
 
     // Show loading spinner while checking authentication
@@ -27,9 +27,24 @@ const ProtectedRoute = ({ children, requiredRole = null, requiredPermission = nu
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Check role requirement
-    if (requiredRole && !hasRole(requiredRole)) {
-        return <Navigate to="/unauthorized" replace />;
+    // Check role requirement with hierarchy support
+    if (requiredRole) {
+        let hasRequiredRole = false;
+        
+        switch (requiredRole) {
+            case 'superadmin':
+                hasRequiredRole = isSuperAdmin();
+                break;
+            case 'admin':
+                hasRequiredRole = isAdmin(); // This includes both admin and superadmin
+                break;
+            default:
+                hasRequiredRole = hasRole(requiredRole);
+        }
+        
+        if (!hasRequiredRole) {
+            return <Navigate to="/unauthorized" replace />;
+        }
     }
 
     // Check permission requirement

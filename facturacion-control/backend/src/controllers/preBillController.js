@@ -24,7 +24,9 @@ const createPreBill = async (req, res) => {
         eps: patient.eps,
         department: patient.department,
         municipality: patient.municipality,
-        zone: patient.zone || 'U'
+        zone: patient.zone || 'U',
+        ciudadNacimiento: patient.ciudadNacimiento,
+        ciudadExpedicion: patient.ciudadExpedicion
       },
       services: services.map(service => ({
         ...service,
@@ -172,6 +174,8 @@ const exportPreBills = async (req, res) => {
       { header: 'DPTO', key: 'department', width: 15 },
       { header: 'MIPIO', key: 'municipality', width: 15 },
       { header: 'ZONA', key: 'zone', width: 10 },
+      { header: 'CIUDAD_NAC', key: 'ciudadNacimiento', width: 20 },
+      { header: 'CIUDAD_EXP', key: 'ciudadExpedicion', width: 20 },
       { header: 'TOTAL', key: 'totalValue', width: 12 },
       { header: 'FECHA_SERV', key: 'serviceDate', width: 12 },
       { header: 'AUTORIZACION', key: 'authorization', width: 15 },
@@ -197,6 +201,8 @@ const exportPreBills = async (req, res) => {
           department: bill.patientId.department,
           municipality: bill.patientId.municipality,
           zone: bill.patientId.zone || 'U',
+          ciudadNacimiento: bill.patientId.ciudadNacimiento,
+          ciudadExpedicion: bill.patientId.ciudadExpedicion,
           totalValue: service.value,
           serviceDate: service.serviceDate?.toISOString().split('T')[0],
           authorization: service.authorization,

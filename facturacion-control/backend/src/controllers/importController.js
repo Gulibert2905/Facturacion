@@ -2,6 +2,7 @@
 const ExcelJS = require('exceljs');
 const Patient = require('../models/Patient');
 const ServiceRecord = require('../models/ServiceRecord');
+const City = require('../models/City');
 
 // Generador de plantillas
 const generateTemplate = async (req, res) => {
@@ -21,7 +22,9 @@ const generateTemplate = async (req, res) => {
         { header: 'birthDate', key: 'birthDate', width: 15 },
         { header: 'gender', key: 'gender', width: 15 },
         { header: 'regimen', key: 'regimen', width: 15 },
-        { header: 'municipality', key: 'municipality', width: 15 }
+        { header: 'municipality', key: 'municipality', width: 15 },
+        { header: 'ciudadNacimiento', key: 'ciudadNacimiento', width: 20 },
+        { header: 'ciudadExpedicion', key: 'ciudadExpedicion', width: 20 }
       ];
 
       // Datos de ejemplo
@@ -35,7 +38,9 @@ const generateTemplate = async (req, res) => {
         birthDate: '1990-01-15',
         gender: "M",
         regimen: 'Contributivo',
-        municipality: 'Valledupar'
+        municipality: 'Valledupar',
+        ciudadNacimiento: 'Valledupar',
+        ciudadExpedicion: 'Valledupar'
       });
     }
 
@@ -50,6 +55,8 @@ const generateTemplate = async (req, res) => {
         { header: 'secondLastName', key: 'secondLastName', width: 15 },
         { header: 'birthDate', key: 'birthDate', width: 15 },
         { header: 'gender', key: 'gender', width: 10 },
+        { header: 'ciudadNacimiento', key: 'ciudadNacimiento', width: 20 },
+        { header: 'ciudadExpedicion', key: 'ciudadExpedicion', width: 20 },
         
         // Datos del servicio
         { header: 'serviceDate', key: 'serviceDate', width: 15 },
@@ -69,6 +76,8 @@ const generateTemplate = async (req, res) => {
           secondLastName: 'Gómez',
           birthDate: '1990-01-15',
           gender: 'M',
+          ciudadNacimiento: 'Valledupar',
+          ciudadExpedicion: 'Valledupar',
           serviceDate: '2024-01-15',
           cupsCode: '890201',
           description: 'Consulta medicina general',
@@ -83,6 +92,8 @@ const generateTemplate = async (req, res) => {
           secondLastName: 'Góez',
           birthDate: '1990-01-12',
           gender: 'M',
+          ciudadNacimiento: 'Barranquilla',
+          ciudadExpedicion: 'Barranquilla',
           serviceDate: '2024-01-15',
           cupsCode: '890201',
           description: 'Consulta medicina general',
@@ -94,6 +105,51 @@ const generateTemplate = async (req, res) => {
       // Agregar los datos de ejemplo
       servicesData.forEach(service => {
         worksheet.addRow(service);
+      });
+
+      // Estilo para encabezados
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Ajustar ancho de columnas
+      worksheet.columns.forEach(column => {
+        column.width = column.width || 15;
+        column.alignment = { vertical: 'middle', horizontal: 'left' };
+      });
+    }
+
+    else if (type === 'cities') {
+      worksheet.columns = [
+        { header: 'nombre', key: 'nombre', width: 20 },
+        { header: 'departamento', key: 'departamento', width: 20 },
+        { header: 'codigo', key: 'codigo', width: 15 }
+      ];
+
+      // Datos de ejemplo
+      const citiesData = [
+        {
+          nombre: 'Barranquilla',
+          departamento: 'Atlántico',
+          codigo: '08001'
+        },
+        {
+          nombre: 'Medellín',
+          departamento: 'Antioquia',
+          codigo: '05001'
+        },
+        {
+          nombre: 'Bogotá',
+          departamento: 'Cundinamarca',
+          codigo: '11001'
+        }
+      ];
+
+      citiesData.forEach(city => {
+        worksheet.addRow(city);
       });
 
       // Estilo para encabezados
@@ -242,6 +298,8 @@ const importServices = async (req, res) => {
             secondLastName: service.secondLastName || '',
             birthDate: service.birthDate ? new Date(service.birthDate) : null,
             gender: service.gender || '',
+            ciudadNacimiento: service.ciudadNacimiento || '',
+            ciudadExpedicion: service.ciudadExpedicion || '',
             active: true
           });
           
@@ -329,8 +387,93 @@ const importServices = async (req, res) => {
   }
 };
 
+// Importación de ciudades
+const importCities = async (req, res) => {
+  try {
+    const { data } = req.body;
+    const results = {
+      success: [],
+      duplicates: [],
+      errors: []
+    };
+
+    for (const cityData of data) {
+      try {
+        // Validar datos requeridos
+        if (!cityData.nombre || !cityData.departamento) {
+          results.errors.push({
+            data: cityData,
+            error: 'Nombre y departamento son campos requeridos'
+          });
+          continue;
+        }
+
+        // Verificar si la ciudad ya existe
+        const existingCity = await City.findOne({ 
+          nombre: cityData.nombre.trim(),
+          departamento: cityData.departamento.trim()
+        });
+
+        if (existingCity) {
+          results.duplicates.push({
+            nombre: cityData.nombre,
+            departamento: cityData.departamento
+          });
+          continue;
+        }
+
+        // Crear nueva ciudad
+        const newCity = await City.create({
+          nombre: cityData.nombre.trim(),
+          departamento: cityData.departamento.trim(),
+          codigo: cityData.codigo ? cityData.codigo.trim() : undefined
+        });
+
+        results.success.push({
+          nombre: newCity.nombre,
+          departamento: newCity.departamento,
+          codigo: newCity.codigo
+        });
+
+      } catch (error) {
+        results.errors.push({
+          data: cityData,
+          error: error.message
+        });
+      }
+    }
+
+    const message = [];
+    if (results.success.length > 0) {
+      message.push(`${results.success.length} ciudades importadas exitosamente.`);
+    }
+    
+    if (results.duplicates.length > 0) {
+      message.push(`${results.duplicates.length} ciudades ya existían en el sistema.`);
+    }
+    
+    if (results.errors.length > 0) {
+      message.push(`${results.errors.length} ciudades tuvieron errores durante la importación.`);
+    }
+
+    res.json({ 
+      message: message.join(' '),
+      details: results
+    });
+
+  } catch (error) {
+    console.error('Error en importación de ciudades:', error);
+    res.status(400).json({ 
+      message: 'Error en la importación de ciudades',
+      error: error.message,
+      details: error
+    });
+  }
+};
+
 module.exports = {
   generateTemplate,
   importPatients,
-  importServices
+  importServices,
+  importCities
 };

@@ -1,5 +1,5 @@
 // src/services/rips/ripsValidationService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para la validación de datos RIPS

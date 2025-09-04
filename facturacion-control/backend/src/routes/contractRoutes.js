@@ -11,9 +11,33 @@ const Contract = require('../models/Contract');
 // Todas las rutas requieren autenticación
 router.use(protect);
 
+router.get('/', 
+  requirePermission(MODULES.CONTRACTS, ACTIONS.READ),
+  async (req, res) => {
+    try {
+      const contracts = await Contract.find().populate('company');
+      res.json(contracts);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 router.get('/with-ceiling', 
   requirePermission(MODULES.CONTRACTS, ACTIONS.READ),
   getContractsWithCeiling
+);
+
+router.get('/company/:companyId', 
+  requirePermission(MODULES.CONTRACTS, ACTIONS.READ),
+  async (req, res) => {
+    try {
+      const contracts = await Contract.find({ company: req.params.companyId }).populate('company');
+      res.json(contracts);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
 );
 
 router.get('/alerts', 

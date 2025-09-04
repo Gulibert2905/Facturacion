@@ -1,5 +1,5 @@
 // src/services/financialAnalysis/projectionService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para cálculo y gestión de proyecciones financieras

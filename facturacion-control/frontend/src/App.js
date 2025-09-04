@@ -19,6 +19,8 @@ import AppProviders from './components/AppProviders';
 import AdvancedDashboard from './pages/AdvancedDashboard';
 import AdvancedReports from './pages/AdvancedReports';
 import UserManagement from './pages/UserManagement';
+import RolePermissions from './pages/RolePermissions';
+import SuperAdminPanel from './pages/SuperAdminPanel';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Unauthorized from './pages/Unauthorized';
 
@@ -83,7 +85,9 @@ function App() {
         } />
         <Route path="/advanced-reports" element={
           <ProtectedRoute>
-            <AdvancedReports />
+            <Layout>
+              <AdvancedReports />
+            </Layout>
           </ProtectedRoute>
         } />
         {/* Utilizar ErrorBoundary en los nuevos componentes */}
@@ -125,7 +129,9 @@ function App() {
         } />
         <Route path="/advanced-dashboard" element={
           <ProtectedRoute>
-            <AdvancedDashboard />
+            <Layout>
+              <AdvancedDashboard />
+            </Layout>
           </ProtectedRoute>
         } />
         <Route path="/import" element={
@@ -162,6 +168,24 @@ function App() {
             <Layout>
               <ErrorBoundary>
                 <UserManagement />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/role-permissions" element={
+          <ProtectedRoute requiredRole="admin">
+            <Layout>
+              <ErrorBoundary>
+                <RolePermissions />
+              </ErrorBoundary>
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/super-admin" element={
+          <ProtectedRoute requiredRole="superadmin">
+            <Layout>
+              <ErrorBoundary>
+                <SuperAdminPanel />
               </ErrorBoundary>
             </Layout>
           </ProtectedRoute>

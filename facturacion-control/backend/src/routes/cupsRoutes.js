@@ -7,6 +7,7 @@ const {
   getServiceByCupsCode,
   createService,
   updateService,
+  deleteService,
   assignTariff,
   removeTariff,
   importServices,
@@ -19,6 +20,7 @@ router.get('/', getServices);
 router.get('/:cupsCode', getServiceByCupsCode);
 router.post('/',createService);
 router.put('/:cupsCode', updateService);
+router.delete('/:cupsCode', deleteService);
 router.post('/import', importServices);
 
 // Rutas para tarifas

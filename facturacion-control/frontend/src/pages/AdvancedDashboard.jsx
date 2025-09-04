@@ -1,5 +1,5 @@
 // src/pages/AdvancedDashboard.jsx - Código completo y funcional
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Grid,
@@ -61,6 +61,9 @@ const AdvancedDashboard = () => {
     municipality: 'all'
   });
 
+  // Ref para evitar loops infinitos
+  const lastFiltersRef = useRef(filters);
+
   // Obtener datos básicos
   const { data: companies, loading: loadingCompanies } = useApi('/companies');
   const { 
@@ -100,6 +103,18 @@ const AdvancedDashboard = () => {
     }
   }, [filters.company, fetchContracts]);
 
+  // Función estable para refrescar datos
+  const refreshDashboardData = useCallback(() => {
+    const currentFilters = lastFiltersRef.current;
+    refreshStats({ query: currentFilters });
+    refreshProjections({ 
+      query: { 
+        company: currentFilters.company, 
+        contract: currentFilters.contract 
+      } 
+    });
+  }, [refreshStats, refreshProjections]);
+
   // Manejar cambios de filtros
   const handleFilterChange = (filterType, value) => {
     const newFilters = { ...filters, [filterType]: value };
@@ -110,18 +125,21 @@ const AdvancedDashboard = () => {
     }
     
     setFilters(newFilters);
+    lastFiltersRef.current = newFilters;
   };
 
-  // Efecto para refrescar datos cuando cambian filtros
+  // Efecto para refrescar datos cuando cambian filtros críticos
   useEffect(() => {
-    refreshStats({ query: filters });
-    refreshProjections({ 
-      query: { 
-        company: filters.company, 
-        contract: filters.contract 
-      } 
-    });
-  }, [filters, refreshStats, refreshProjections]);
+    const shouldRefresh = 
+      filters.company !== lastFiltersRef.current.company ||
+      filters.contract !== lastFiltersRef.current.contract ||
+      filters.period !== lastFiltersRef.current.period;
+
+    if (shouldRefresh) {
+      lastFiltersRef.current = filters;
+      refreshDashboardData();
+    }
+  }, [filters.company, filters.contract, filters.period, refreshDashboardData]);
 
   // Componente para las tarjetas de métricas
   const MetricCard = ({ title, value, icon, color, loading, subtitle }) => (
@@ -407,10 +425,7 @@ const AdvancedDashboard = () => {
             <Tooltip title="Actualizar datos">
               <IconButton 
                 color="primary" 
-                onClick={() => {
-                  refreshStats({ query: filters });
-                  refreshProjections({ query: { company: filters.company, contract: filters.contract } });
-                }}
+                onClick={refreshDashboardData}
                 disabled={loadingStats}
                 size="large"
               >

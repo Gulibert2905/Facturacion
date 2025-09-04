@@ -1,5 +1,5 @@
 // src/services/rips/resolutions/rips3374Service.js
-import apiService from '../../apiService';
+import { apiService } from '../../apiService';
 
 /**
  * Servicio específico para la gestión de RIPS según la Resolución 3374 de 2000

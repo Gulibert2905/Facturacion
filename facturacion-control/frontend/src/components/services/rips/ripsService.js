@@ -1,5 +1,5 @@
 // src/services/rips/ripsService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para la generación y gestión de RIPS

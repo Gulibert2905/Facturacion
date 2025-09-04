@@ -326,6 +326,7 @@ const getDashboardStatsAdvanced = async (req, res) => {
       contract = 'all',
       regimen = 'all',
       municipality = 'all',
+      city = 'all',
       startDate,
       endDate
     } = req.query;
@@ -388,6 +389,13 @@ const getDashboardStatsAdvanced = async (req, res) => {
     
     if (municipality !== 'all') {
       patientFilter.municipality = municipality;
+    }
+    
+    if (city !== 'all') {
+      patientFilter.$or = [
+        { ciudadNacimiento: city },
+        { ciudadExpedicion: city }
+      ];
     }
 
     // Ejecutar consultas en paralelo
@@ -629,9 +637,17 @@ const getDashboardStatsAdvanced = async (req, res) => {
       ])
     ]);
 
-    // Formatear respuesta
+    // Formatear respuesta compatible con Dashboard básico
     const response = {
-      // Métricas principales
+      // Métricas principales (compatibilidad con Dashboard.jsx)
+      totalServices,
+      totalRevenue,
+      totalPatients,
+      pendingPreBills: pendingServices, // Alias para compatibilidad
+      servicesTrend: 0, // Por ahora sin implementar
+      revenueTrend: 0, // Por ahora sin implementar
+      
+      // Métricas adicionales para el dashboard avanzado
       metrics: {
         totalServices,
         totalRevenue,
@@ -667,7 +683,21 @@ const getDashboardStatsAdvanced = async (req, res) => {
         }))
       },
       
-      // Tendencias temporales
+      // Datos para gráficos (compatibilidad con Dashboard.jsx)
+      servicesOverTime: servicesOverTime.map(item => ({
+        name: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+        value: item.count
+      })),
+      revenueOverTime: revenueOverTime.map(item => ({
+        name: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+        value: item.totalValue
+      })),
+      servicesByType: servicesByType.map(item => ({
+        name: item._id,
+        value: item.count
+      })),
+      
+      // Tendencias temporales (para dashboard avanzado)
       trends: {
         servicesOverTime: servicesOverTime.map(item => ({
           period: `${item._id.year}-${String(item._id.month).padStart(2, '0')}${item._id.day ? `-${String(item._id.day).padStart(2, '0')}` : ''}`,

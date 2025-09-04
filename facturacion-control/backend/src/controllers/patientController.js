@@ -1,5 +1,29 @@
 const Patient = require('../models/Patient');
 const ServiceRecord = require('../models/ServiceRecord');
+const City = require('../models/City');
+
+const getCities = async (req, res) => {
+    try {
+        // Obtener ciudades de la colección específica
+        const cities = await City.find({}, 'nombre departamento')
+            .sort({ nombre: 1 })
+            .lean();
+        
+        // Formatear las ciudades para el autocomplete
+        const formattedCities = cities.map(city => city.nombre);
+        
+        // También obtener ciudades de pacientes existentes como respaldo
+        const citiesNacimiento = await Patient.distinct('ciudadNacimiento', { ciudadNacimiento: { $ne: null, $ne: '' } });
+        const citiesExpedicion = await Patient.distinct('ciudadExpedicion', { ciudadExpedicion: { $ne: null, $ne: '' } });
+        
+        // Combinar todas las ciudades y eliminar duplicados
+        const allCities = [...new Set([...formattedCities, ...citiesNacimiento, ...citiesExpedicion])];
+        
+        res.json(allCities.sort());
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
 const getPatients = async (req, res) => {
     try {
@@ -14,7 +38,6 @@ const getPatients = async (req, res) => {
 const getPatientByDocument = async (req, res) => {
     try {
         const documentNumber = req.params.document;
-        console.log('Buscando documento:', documentNumber);
 
         // Validar que el número de documento no esté vacío
         if (!documentNumber || documentNumber.trim() === '') {
@@ -28,7 +51,7 @@ const getPatientByDocument = async (req, res) => {
         const patient = await Patient.findOne({ 
             documentNumber,
             active: true
-        }).select('documentType documentNumber firstName secondName firstLastName secondLastName fullName birthDate gender regimen municipality');
+        }).select('documentType documentNumber firstName secondName firstLastName secondLastName fullName birthDate gender regimen municipality ciudadNacimiento ciudadExpedicion');
 
         if (!patient) {
             return res.status(404).json({ 
@@ -156,5 +179,6 @@ module.exports = {
     getPatients,
     getPatientByDocument,
     createPatient,
-    updatePatient
+    updatePatient,
+    getCities
 };

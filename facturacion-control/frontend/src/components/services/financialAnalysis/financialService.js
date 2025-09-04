@@ -12,7 +12,7 @@
      */
     getFinancialKPIs: async (params = {}) => {
       try {
-        return await apiService.get('/api/financial/kpis', { params });
+        return await apiService.get('/financial/kpis', { params });
       } catch (error) {
         console.error('Error al obtener KPIs financieros:', error);
         throw error;
@@ -26,7 +26,7 @@
      */
     getBillingTrends: async (params = {}) => {
       try {
-        return await apiService.get('/api/financial/billing-trends', { params });
+        return await apiService.get('/financial/billing-trends', { params });
       } catch (error) {
         console.error('Error al obtener tendencias de facturación:', error);
         throw error;
@@ -40,7 +40,7 @@
      */
     getCollectionTrends: async (params = {}) => {
       try {
-        return await apiService.get('/api/financial/collection-trends', { params });
+        return await apiService.get('/financial/collection-trends', { params });
       } catch (error) {
         console.error('Error al obtener tendencias de recaudos:', error);
         throw error;
@@ -54,7 +54,7 @@
      */
     getFinancialProjections: async (params = {}) => {
       try {
-        return await apiService.get('/api/financial/projections', { params });
+        return await apiService.get('/financial/projections', { params });
       } catch (error) {
         console.error('Error al obtener proyecciones financieras:', error);
         throw error;
@@ -68,7 +68,7 @@
      */
     getAccountsReceivableAging: async (params = {}) => {
       try {
-        return await apiService.get('/api/financial/accounts-receivable', { params });
+        return await apiService.get('/financial/accounts-receivable', { params });
       } catch (error) {
         console.error('Error al obtener análisis de cartera:', error);
         throw error;
@@ -82,7 +82,7 @@
      */
     getProfitabilityAnalysis: async (params = {}) => {
       try {
-        return await apiService.get('/api/financial/profitability', { params });
+        return await apiService.get('/financial/profitability', { params });
       } catch (error) {
         console.error('Error al obtener análisis de rentabilidad:', error);
         throw error;

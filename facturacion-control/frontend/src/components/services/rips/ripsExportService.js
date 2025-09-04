@@ -1,5 +1,5 @@
 // src/services/rips/ripsExportService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio para la exportación de RIPS en diferentes formatos

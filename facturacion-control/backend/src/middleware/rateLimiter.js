@@ -96,8 +96,8 @@ const rateLimiter = new SimpleRateLimiter();
  */
 const createRateLimit = (options = {}) => {
   const {
-    windowMs = 15 * 60 * 1000, // 15 minutos por defecto
-    max = 100, // 100 requests por defecto
+    windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos por defecto
+    max = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 100 requests por defecto
     message = 'Demasiadas solicitudes, intenta más tarde',
     statusCode = 429,
     keyGenerator = (req) => req.ip || req.connection.remoteAddress,
@@ -144,11 +144,11 @@ const createRateLimit = (options = {}) => {
  * Rate limiters específicos para diferentes endpoints
  */
 
-// Para login - más permisivo durante desarrollo
+// Para login - configurado por variables de entorno
 const loginRateLimit = createRateLimit({
-  windowMs: process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 2 * 60 * 1000, // 15 min en prod, 2 min en dev
-  max: process.env.NODE_ENV === 'production' ? 5 : 20, // 5 en prod, 20 en dev
-  message: 'Demasiados intentos de login. Intenta en 15 minutos.',
+  windowMs: parseInt(process.env.LOGIN_RATE_LIMIT_WINDOW_MS) || (process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 2 * 60 * 1000),
+  max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS) || (process.env.NODE_ENV === 'production' ? 5 : 20),
+  message: `Demasiados intentos de login. Intenta en ${Math.floor((parseInt(process.env.LOGIN_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000) / 60000)} minutos.`,
   endpoint: 'login'
 });
 

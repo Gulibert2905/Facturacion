@@ -1,5 +1,6 @@
 // src/pages/ContractManagement.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import secureStorage from '../utils/secureStorage';
 import { 
   Box, 
   Typography, 
@@ -84,7 +85,13 @@ function ContractManagement() {
         ? `http://localhost:5000/api/companies/${selectedCompany}/contracts` 
         : 'http://localhost:5000/api/contracts';
         
-      const response = await fetch(url);
+      const token = secureStorage.getItem('token');
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setContracts(data);
@@ -184,9 +191,13 @@ function ContractManagement() {
         ? `http://localhost:5000/api/contracts/${currentContract._id}`
         : 'http://localhost:5000/api/contracts';
       
+      const token = secureStorage.getItem('token');
       const response = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         body: JSON.stringify(currentContract)
       });
       
@@ -207,8 +218,13 @@ function ContractManagement() {
   const handleDeleteContract = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar este contrato? Esta acción no se puede deshacer.')) {
       try {
+        const token = secureStorage.getItem('token');
         const response = await fetch(`http://localhost:5000/api/contracts/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
         });
         
         if (response.ok) {

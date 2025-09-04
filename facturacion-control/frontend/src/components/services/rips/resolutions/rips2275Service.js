@@ -1,5 +1,5 @@
 // src/services/rips/resolutions/rips2275Service.js
-import apiService from '../../apiService';
+import { apiService } from '../../apiService';
 
 /**
  * Servicio específico para la gestión de RIPS según la Resolución 2275 de 2023

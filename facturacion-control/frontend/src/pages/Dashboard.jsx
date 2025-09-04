@@ -113,6 +113,7 @@ const Dashboard = () => {
   // Estado para filtros
   const [dateRange, setDateRange] = useState('month');
   const [selectedCompany, setSelectedCompany] = useState('all');
+  const [selectedCity, setSelectedCity] = useState('all');
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('info');
@@ -126,22 +127,24 @@ const Dashboard = () => {
     loading: loadingDashboard, 
     error: dashboardError,
     fetchData: refreshDashboard 
-  } = useApi('/dashboard/stats', {
+  } = useApi('/dashboard/stats/advanced', {
     fetchOnMount: false, // Importante: no cargar automáticamente
     defaultParams: {
-      query: { period: dateRange, company: selectedCompany }
+      query: { period: dateRange, company: selectedCompany, city: selectedCity }
     },
     withLoading: true
   });
 
   const { data: companies } = useApi('/companies');
+  const { data: cities } = useApi('/patients/cities');
 
   useEffect(() => {
     // Solo cargar datos una vez al inicio
     refreshDashboard({ 
       query: { 
         period: dateRange, 
-        company: selectedCompany 
+        company: selectedCompany,
+        city: selectedCity 
       } 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,6 +181,12 @@ const Dashboard = () => {
     setFilterChangeCount(prev => prev + 1);
   };
   
+  const handleCityChange = (newCity) => {
+    setSelectedCity(newCity);
+    // Incrementamos el contador para que el efecto se dispare
+    setFilterChangeCount(prev => prev + 1);
+  };
+  
   // El useEffect que muestra el error se mantiene igual
   useEffect(() => {
     if (dashboardError) {
@@ -192,7 +201,8 @@ const Dashboard = () => {
     refreshDashboard({ 
       query: { 
         period: dateRange, 
-        company: selectedCompany 
+        company: selectedCompany,
+        city: selectedCity 
       } 
     });
     setAlertMessage('Datos actualizados correctamente');
@@ -248,6 +258,22 @@ const Dashboard = () => {
               {companies?.map(company => (
                 <MenuItem key={company._id} value={company._id}>
                   {company.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Ciudad</InputLabel>
+            <Select
+              value={selectedCity}
+              label="Ciudad"
+              onChange={(e) => handleCityChange(e.target.value)}
+            >
+              <MenuItem value="all">Todas las ciudades</MenuItem>
+              {cities?.map(city => (
+                <MenuItem key={city} value={city}>
+                  {city}
                 </MenuItem>
               ))}
             </Select>

@@ -86,6 +86,16 @@ const loginUser = async (req, res) => {
       ]
     });
 
+    logger.info({
+      type: 'user_search_result',
+      username: username ? username.substring(0, 3) + '***' : 'undefined',
+      userFound: !!user,
+      userId: user?._id,
+      userActive: user?.active,
+      loginAttempts: user?.loginAttempts,
+      ip: clientIP
+    });
+
     if (!user) {
       logger.warn({
         type: 'login_failed',
@@ -134,6 +144,16 @@ const loginUser = async (req, res) => {
 
     // Verificar password
     const isMatch = await bcrypt.compare(password, user.password);
+    
+    logger.info({
+      type: 'password_verification',
+      username: user.username.substring(0, 3) + '***',
+      userId: user._id,
+      passwordMatch: isMatch,
+      currentAttempts: user.loginAttempts || 0,
+      ip: clientIP
+    });
+
     if (!isMatch) {
       // Incrementar intentos fallidos
       user.loginAttempts = (user.loginAttempts || 0) + 1;

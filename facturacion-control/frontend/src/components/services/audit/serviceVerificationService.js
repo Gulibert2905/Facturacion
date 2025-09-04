@@ -1,5 +1,5 @@
 // src/services/audit/serviceVerificationService.js
-import apiService from '../apiService';
+import { apiService } from '../apiService';
 
 /**
  * Servicio especializado para verificación automática de servicios
@@ -48,7 +48,7 @@ const serviceVerificationService = {
    */
   verifyServices: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-services', params);
+      return await apiService.post('/audit/verify-services', params);
     } catch (error) {
       console.error('Error al verificar servicios:', error);
       throw error;
@@ -62,7 +62,7 @@ const serviceVerificationService = {
    */
   verifyAuthorizations: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-authorizations', params);
+      return await apiService.post('/audit/verify-authorizations', params);
     } catch (error) {
       console.error('Error al verificar autorizaciones:', error);
       throw error;
@@ -76,7 +76,7 @@ const serviceVerificationService = {
    */
   verifyServiceCodes: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-service-codes', params);
+      return await apiService.post('/audit/verify-service-codes', params);
     } catch (error) {
       console.error('Error al verificar códigos de servicios:', error);
       throw error;
@@ -90,7 +90,7 @@ const serviceVerificationService = {
    */
   verifyServiceCoverage: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-service-coverage', params);
+      return await apiService.post('/audit/verify-service-coverage', params);
     } catch (error) {
       console.error('Error al verificar cobertura de servicios:', error);
       throw error;
@@ -104,7 +104,7 @@ const serviceVerificationService = {
    */
   verifyQuantityLimits: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-quantity-limits', params);
+      return await apiService.post('/audit/verify-quantity-limits', params);
     } catch (error) {
       console.error('Error al verificar límites de cantidad:', error);
       throw error;
@@ -118,7 +118,7 @@ const serviceVerificationService = {
    */
   verifyDocumentation: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-documentation', params);
+      return await apiService.post('/audit/verify-documentation', params);
     } catch (error) {
       console.error('Error al verificar documentación:', error);
       throw error;
@@ -132,7 +132,7 @@ const serviceVerificationService = {
    */
   verifyMedicalNecessity: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-medical-necessity', params);
+      return await apiService.post('/audit/verify-medical-necessity', params);
     } catch (error) {
       console.error('Error al verificar necesidad médica:', error);
       throw error;
@@ -176,7 +176,7 @@ const serviceVerificationService = {
    */
   getVerificationMatrix: async () => {
     try {
-      return await apiService.get('/api/audit/verification-matrix');
+      return await apiService.get('/audit/verification-matrix');
     } catch (error) {
       console.error('Error al obtener matriz de verificación:', error);
       throw error;
@@ -190,7 +190,7 @@ const serviceVerificationService = {
    */
   updateVerificationMatrix: async (matrixData) => {
     try {
-      return await apiService.put('/api/audit/verification-matrix', matrixData);
+      return await apiService.put('/audit/verification-matrix', matrixData);
     } catch (error) {
       console.error('Error al actualizar matriz de verificación:', error);
       throw error;
@@ -204,7 +204,7 @@ const serviceVerificationService = {
    */
   verifyDiagnosisProcedureConsistency: async (params = {}) => {
     try {
-      return await apiService.post('/api/audit/verify-diagnosis-procedure', params);
+      return await apiService.post('/audit/verify-diagnosis-procedure', params);
     } catch (error) {
       console.error('Error al verificar consistencia diagnóstico-procedimiento:', error);
       throw error;

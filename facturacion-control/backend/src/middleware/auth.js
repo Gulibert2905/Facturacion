@@ -226,6 +226,13 @@ const admin = (req, res, next) => {
 };
 
 /**
+ * Middleware para verificar rol de superadmin
+ */
+const superAdmin = (req, res, next) => {
+  return requireRole('superadmin')(req, res, next);
+};
+
+/**
  * Middleware para verificar si es el mismo usuario o admin
  */
 const ownerOrAdmin = (req, res, next) => {
@@ -250,6 +257,7 @@ const ownerOrAdmin = (req, res, next) => {
 
 module.exports = { 
   protect, 
+  superAdmin,
   admin,
   requireRole,
   requirePermission,

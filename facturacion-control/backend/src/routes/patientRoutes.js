@@ -4,7 +4,8 @@ const {
     getPatients,
     getPatientByDocument,
     createPatient,
-    updatePatient
+    updatePatient,
+    getCities
 } = require('../controllers/patientController');
 const { getPatientServices } = require('../controllers/serviceController');
 const { protect, requirePermission, MODULES, ACTIONS } = require('../middleware/auth');
@@ -14,6 +15,11 @@ const { sanitizeInput, validatePatientData, validatePagination } = require('../m
 router.use(protect);
 
 // Primero las rutas específicas
+router.get('/cities', 
+    requirePermission(MODULES.PATIENTS, ACTIONS.READ),
+    getCities
+);
+
 router.get('/patient/:patientId/services', 
     requirePermission(MODULES.SERVICES, ACTIONS.READ),
     getPatientServices
@@ -35,6 +41,11 @@ router.post('/',
 );
 
 router.put('/:id', 
+    requirePermission(MODULES.PATIENTS, ACTIONS.UPDATE),
+    updatePatient
+);
+
+router.patch('/:id', 
     requirePermission(MODULES.PATIENTS, ACTIONS.UPDATE),
     updatePatient
 );

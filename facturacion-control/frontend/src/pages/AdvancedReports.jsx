@@ -1,5 +1,6 @@
 // src/pages/AdvancedReports.jsx - Código completo
 import React, { useState, useEffect } from 'react';
+import secureStorage from '../utils/secureStorage';
 import {
   Box,
   Grid,
@@ -122,10 +123,16 @@ const AdvancedReports = () => {
 
   const loadInitialData = async () => {
     try {
+      const token = secureStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      };
+      
       const [companiesRes, templatesRes, prefacturasRes] = await Promise.all([
-        fetch('/api/companies'),
-        fetch('/api/reports/templates'),
-        fetch('/api/prebills?status=pending')
+        fetch('http://localhost:5000/api/companies', { headers }),
+        fetch('http://localhost:5000/api/reports/templates', { headers }),
+        fetch('http://localhost:5000/api/prebills?status=pending', { headers })
       ]);
       
       setCompanies(await companiesRes.json());
@@ -141,12 +148,16 @@ const AdvancedReports = () => {
     try {
       const method = editingTemplate ? 'PUT' : 'POST';
       const url = editingTemplate ? 
-        `/api/reports/templates/${editingTemplate._id}` : 
-        '/api/reports/templates';
+        `http://localhost:5000/api/reports/templates/${editingTemplate._id}` : 
+        'http://localhost:5000/api/reports/templates';
       
+      const token = secureStorage.getItem('token');
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         body: JSON.stringify(newTemplate)
       });
 
@@ -758,9 +769,13 @@ const AdvancedReports = () => {
   const handleExport = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/reports/advanced', {
+      const token = secureStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/reports/advanced', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         body: JSON.stringify({
           tipo: selectedReportType,
           prefacturaIds: selectedPrefacturas,

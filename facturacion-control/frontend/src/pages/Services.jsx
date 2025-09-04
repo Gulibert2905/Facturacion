@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatDate } from '../utils/dateUtils';
 import { formatServiceDate } from '../utils/dateFormatter';
+import secureStorage from '../utils/secureStorage';
 import {
  Box,
  Paper,
@@ -20,7 +21,8 @@ import {
  Typography,
  InputLabel,
  Select,
- MenuItem
+ MenuItem,
+ Autocomplete
 } from '@mui/material';
 import ActivePreBills from '../components/ActivePreBills';
 import Dialog from '@mui/material/Dialog';
@@ -39,6 +41,9 @@ const [contracts, setContracts] = useState([]);
 const [selectedContract, setSelectedContract] = useState('');
 const [authorization, setAuthorization] = useState('');
 const [diagnosis, setDiagnosis] = useState('');
+const [birthCity, setBirthCity] = useState('');
+const [expeditionCity, setExpeditionCity] = useState('');
+const [cities, setCities] = useState([]);
 const [selectedCompany, setSelectedCompany] = useState('');
 const [companies, setCompanies] = useState([]);
 const [showServiceSelection, setShowServiceSelection] = useState(false);
@@ -54,6 +59,16 @@ const [prefacturationSession, setPrefacturationSession] = useState({
 const [savedPreBills, setSavedPreBills] = useState([]);
 const [isLoading, setIsLoading] = useState(false);
 
+// Función para validar número de documento colombiano
+const validateDocumentNumber = (docNumber) => {
+  if (!docNumber) return false;
+  
+  // Limpiar el documento (solo números) - SIEMPRE limpiar primero
+  const cleaned = String(docNumber).replace(/\D/g, '');
+  
+  // Validar longitud (6-12 dígitos para cédulas y documentos válidos)
+  return cleaned.length >= 6 && cleaned.length <= 12;
+};
 
 useEffect(() => {
   if (services.length > 0) {
@@ -70,6 +85,7 @@ useEffect(() => {
  // Cargar empresas al inicio
 useEffect(() => {
   loadCompanies();
+  loadCities();
 }, []);
 
 // Cargar contratos cuando cambia la empresa
@@ -87,7 +103,12 @@ const checkActivePreBills = useCallback(async () => {
   
   try {
     const url = `http://localhost:5000/api/prebills/active?companyId=${selectedCompany}&contractId=${selectedContract}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     
     if (response.ok) {
       const data = await response.json();
@@ -103,6 +124,8 @@ const clearPrefacturationData = useCallback(() => {
   setSelectedServices([]);
   setAuthorization('');
   setDiagnosis('');
+  setBirthCity('');
+  setExpeditionCity('');
   
   // Solo resetear la sesión si no hay prefacturas activas
     setPrefacturationSession(prev => ({
@@ -134,7 +157,12 @@ useEffect(() => {
  // 4. FUNCIONES PARA CARGAR DATOS
 const loadCompanies = async () => {
   try {
-    const response = await fetch('http://localhost:5000/api/companies');
+    const response = await fetch('http://localhost:5000/api/companies', {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     const data = await response.json();
     setCompanies(Array.isArray(data) ? data : []);
   } catch (error) {
@@ -146,13 +174,34 @@ const loadCompanies = async () => {
 const loadContracts = async (companyId) => {
   try {
     console.log("Cargando contratos para empresa:", companyId);
-    const response = await fetch(`http://localhost:5000/api/companies/${companyId}/contracts`);
+    const response = await fetch(`http://localhost:5000/api/companies/${companyId}/contracts`, {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     const data = await response.json();
     console.log("Contratos obtenidos:", data);
     setContracts(Array.isArray(data) ? data : []);
   } catch (error) {
     console.error('Error cargando contratos:', error);
     setContracts([]);
+  }
+};
+
+const loadCities = async () => {
+  try {
+    const response = await fetch('http://localhost:5000/api/patients/cities', {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await response.json();
+    setCities(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error('Error cargando ciudades:', error);
+    setCities([]);
   }
 };
 
@@ -172,7 +221,7 @@ const loadPatientServices = async (docNumber) => {
     
     const response = await fetch(`http://localhost:5000/api/services/patients/${encodeURIComponent(cleanDocNumber)}/services`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
         'Content-Type': 'application/json'
       }
     });
@@ -207,6 +256,41 @@ const loadPatientServices = async (docNumber) => {
   }
 };
 
+const updatePatientCities = async (cityData) => {
+  if (!patient?._id) return;
+  
+  try {
+    const response = await fetch(`http://localhost:5000/api/patients/${patient._id}`, {
+      method: 'PATCH',
+      headers: { 
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify(cityData)
+    });
+    
+    if (response.ok) {
+      const updatedPatient = await response.json();
+      setPatient(updatedPatient);
+    }
+  } catch (error) {
+    console.error('Error updating patient cities:', error);
+  }
+};
+
+const handleCitySelection = (cityType, cityValue) => {
+  if (cityType === 'birth') {
+    setBirthCity(cityValue);
+    if (cityValue && patient && !patient.ciudadNacimiento) {
+      updatePatientCities({ ciudadNacimiento: cityValue });
+    }
+  } else if (cityType === 'expedition') {
+    setExpeditionCity(cityValue);
+    if (cityValue && patient && !patient.ciudadExpedicion) {
+      updatePatientCities({ ciudadExpedicion: cityValue });
+    }
+  }
+};
 
 // 5. FUNCIONES DE MANEJO DE EVENTOS
 const handleCompanyChange = (value) => {
@@ -234,22 +318,36 @@ const handleStartPreBilling = () => {
   }
 };
 
-const handleSearchPatient = async (docNumber = documentNumber) => {
+const handleSearchPatient = async (docNumber) => {
   try {
-    // Validar y limpiar el número de documento
-    const cleanDocNumber = docNumber ? String(docNumber).trim() : '';
+    // Determinar el documento a usar 
+    let inputDoc = docNumber;
     
-    if (!cleanDocNumber || cleanDocNumber === '') {
-      setAlertMessage('Ingrese un número de documento válido');
+    // Si no se pasa parámetro, usar el estado actual
+    if (!docNumber) {
+      inputDoc = documentNumber;
+    }
+    // Si es un evento, extraer el valor
+    else if (docNumber && typeof docNumber === 'object' && docNumber.target) {
+      inputDoc = docNumber.target.value;
+    }
+    
+    // Limpiar el documento (solo números)
+    const cleanDocNumber = String(inputDoc || '').replace(/\D/g, '');
+    
+    // Validar usando la función de validación
+    if (!validateDocumentNumber(cleanDocNumber)) {
+      setAlertMessage('Ingrese un número de documento válido (6-12 dígitos)');
       setShowAlert(true);
       return;
     }
 
-    console.log('Buscando paciente con documento:', cleanDocNumber);
+    const apiUrl = `http://localhost:5000/api/patients/${encodeURIComponent(cleanDocNumber)}`;
+    const token = secureStorage.getItem('token');
     
-    const response = await fetch(`http://localhost:5000/api/patients/${encodeURIComponent(cleanDocNumber)}`, {
+    const response = await fetch(apiUrl, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -257,11 +355,9 @@ const handleSearchPatient = async (docNumber = documentNumber) => {
     const data = await response.json();
     
     if (response.ok) {
-      console.log('Paciente encontrado:', data);
       setPatient(data.patient || data); // Manejar diferentes estructuras de respuesta
       await loadPatientServices(cleanDocNumber);
     } else {
-      console.error('Error buscando paciente:', data);
       if (response.status === 404) {
         setAlertMessage(`No se encontró un paciente con documento: ${cleanDocNumber}`);
       } else if (response.status === 401) {
@@ -288,6 +384,7 @@ const handleExportPreBills = async () => {
     const response = await fetch('http://localhost:5000/api/prebills/export', {
       method: 'GET',
       headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
         'Content-Type': 'application/json'
       }
     });
@@ -338,7 +435,12 @@ const addToPreBill = async (service) => {
 
   try {
     // Buscar el valor del servicio en el contrato seleccionado
-    const response = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${selectedContract}`);
+    const response = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${selectedContract}`, {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     
     let tariffData = null;
     
@@ -375,7 +477,10 @@ const addToPreBill = async (service) => {
     try {
       await fetch(`http://localhost:5000/api/services/${service._id}/assign-contract`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+          'Content-Type': 'application/json' 
+        },
         body: JSON.stringify({ 
           contractId: selectedContract, 
           company: selectedCompany,
@@ -413,7 +518,10 @@ const handleSavePreBill = async () => {
 
     const response = await fetch('http://localhost:5000/api/prebills', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify(preBillData)
     });
 
@@ -433,6 +541,8 @@ const handleSavePreBill = async () => {
       //setSelectedServices([]);
       setAuthorization('');
       setDiagnosis('');
+      setBirthCity('');
+      setExpeditionCity('');
       //setPatient(null);
       //setDocumentNumber('');
       //setServices([]);
@@ -470,7 +580,10 @@ const handleFinishPrefacturation = async () => {
     
     const finalizeResponse = await fetch(finalizeUrl, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json' 
+      },
       signal: controller.signal
     });
     
@@ -527,7 +640,10 @@ const handleFinishPrefacturation = async () => {
 const exportSinglePreBill = async (preBill) => {
   return await fetch('http://localhost:5000/api/prebills/export', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+      'Content-Type': 'application/json' 
+    },
     body: JSON.stringify({
       preBills: [preBill._id],
       company: selectedCompany,
@@ -568,7 +684,12 @@ const handleExportResponse = async (response) => {
 // Función para continuar con prefactura existente
 const handleContinuePreBill = async (preBill) => {
   try {
-    const response = await fetch(`http://localhost:5000/api/prebills/${preBill._id}`);
+    const response = await fetch(`http://localhost:5000/api/prebills/${preBill._id}`, {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
     
     if (response.ok) {
       const fullPreBill = await response.json();
@@ -716,18 +837,37 @@ return (
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Número de Documento"
+                label="Número de Documento (6-12 dígitos)"
                 value={documentNumber}
-                onChange={(e) => setDocumentNumber(e.target.value)}
+                onChange={(e) => {
+                  // Solo permitir números y limitar a 12 caracteres
+                  const value = e.target.value.replace(/\D/g, '');
+                  if (value.length <= 12) {
+                    setDocumentNumber(value);
+                  }
+                }}
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter') handleSearchPatient();
+                  if (e.key === 'Enter' && validateDocumentNumber(documentNumber)) {
+                    handleSearchPatient();
+                  }
+                }}
+                error={!!(documentNumber && !validateDocumentNumber(documentNumber))}
+                helperText={
+                  documentNumber && !validateDocumentNumber(documentNumber)
+                    ? "Debe contener entre 6 y 12 dígitos"
+                    : ""
+                }
+                inputProps={{ 
+                  maxLength: 12,
+                  inputMode: 'numeric',
+                  pattern: '[0-9]*'
                 }}
               />
             </Grid>
             <Grid item xs={12} md={2}>
               <Button 
                 variant="contained" 
-                onClick={handleSearchPatient}
+                onClick={() => handleSearchPatient()}
               >
                 Buscar
               </Button>
@@ -760,6 +900,64 @@ return (
                   label="Régimen"
                   value={patient?.regimen || ''}
                   InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  fullWidth
+                  options={cities}
+                  freeSolo
+                  value={patient?.ciudadNacimiento || birthCity}
+                  onChange={(event, value) => {
+                    if (!patient?.ciudadNacimiento) {
+                      handleCitySelection('birth', value || '');
+                    }
+                  }}
+                  onInputChange={(event, value) => {
+                    if (!patient?.ciudadNacimiento) {
+                      setBirthCity(value || '');
+                    }
+                  }}
+                  disabled={!!patient?.ciudadNacimiento}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Ciudad de Nacimiento"
+                      InputProps={{
+                        ...params.InputProps,
+                        readOnly: !!patient?.ciudadNacimiento
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  fullWidth
+                  options={cities}
+                  freeSolo
+                  value={patient?.ciudadExpedicion || expeditionCity}
+                  onChange={(event, value) => {
+                    if (!patient?.ciudadExpedicion) {
+                      handleCitySelection('expedition', value || '');
+                    }
+                  }}
+                  onInputChange={(event, value) => {
+                    if (!patient?.ciudadExpedicion) {
+                      setExpeditionCity(value || '');
+                    }
+                  }}
+                  disabled={!!patient?.ciudadExpedicion}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Ciudad de Expedición"
+                      InputProps={{
+                        ...params.InputProps,
+                        readOnly: !!patient?.ciudadExpedicion
+                      }}
+                    />
+                  )}
                 />
               </Grid>
             </Grid>

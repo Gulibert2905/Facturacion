@@ -1,5 +1,6 @@
 // src/pages/ImportData.jsx
 import React, { useState } from 'react';
+import secureStorage from '../utils/secureStorage';
 import { 
   Box, 
   Paper, 
@@ -28,7 +29,12 @@ function ImportData() {
   
   const downloadTemplate = async (type) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/import/template/${type}`);
+      const token = secureStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/import/template/${type}`, {
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -219,9 +225,13 @@ function ImportData() {
           }
   
           // Enviar al servidor si no hay errores
+          const token = secureStorage.getItem('token');
           const response = await fetch(`http://localhost:5000/api/import/${type}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            },
             body: JSON.stringify({ data })
           });
       
@@ -369,6 +379,54 @@ function ImportData() {
             </Typography>
             <Typography variant="body2" color="info.main" sx={{ mt: 1 }}>
               Nota: Los campos de autorización y diagnóstico se manejarán directamente en el módulo de servicios.
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Importar Ciudades
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <input
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                id="cities-file-input"
+                type="file"
+                onChange={(e) => handleFileUpload(e, 'cities')}
+              />
+              <label htmlFor="cities-file-input">
+                <Button
+                  variant="contained"
+                  component="span"
+                  startIcon={<CloudUpload />}
+                >
+                  Cargar Archivo
+                </Button>
+              </label>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() => downloadTemplate('cities')}
+              >
+                Descargar Plantilla
+              </Button>
+            </Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Formato requerido (Excel):
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              - nombre (nombre de la ciudad)
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              - departamento (departamento al que pertenece)
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              - codigo (código DANE opcional)
+            </Typography>
+            <Typography variant="body2" color="info.main" sx={{ mt: 1 }}>
+              Nota: Las ciudades se usarán para autocompletar los campos de ciudad de nacimiento y expedición.
             </Typography>
           </Paper>
         </Grid>

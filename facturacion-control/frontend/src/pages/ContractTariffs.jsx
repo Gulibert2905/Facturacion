@@ -1,5 +1,6 @@
 // src/pages/ContractTariffs.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import secureStorage from '../utils/secureStorage';
 import { 
   Box, 
   Typography, 
@@ -101,14 +102,25 @@ function ContractTariffs() {
     setLoading(true);
     try {
       // Primero, obtenemos todos los servicios
-      const response = await fetch('http://localhost:5000/api/cups');
+      const token = secureStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/cups', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
       if (response.ok) {
         const allServices = await response.json();
         
         // Para cada servicio, verificamos si tiene tarifa para este contrato
         const servicesWithTariffs = await Promise.all(allServices.map(async (service) => {
           try {
-            const tariffResponse = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${contractId}`);
+            const tariffResponse = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${contractId}`, {
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              }
+            });
             if (tariffResponse.ok) {
               const tariffData = await tariffResponse.json();
               return {

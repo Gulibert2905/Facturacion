@@ -112,6 +112,72 @@ const authService = {
       console.error('Error en registro:', error);
       throw error;
     }
+  },
+
+  /**
+   * Realiza petición GET a la API
+   * @param {string} endpoint - Endpoint de la API
+   * @param {Object} options - Opciones adicionales
+   * @returns {Promise} - Promesa con datos de la respuesta
+   */
+  get: async (endpoint, options = {}) => {
+    try {
+      const response = await apiService.get(endpoint, options);
+      return response;
+    } catch (error) {
+      console.error('Error en GET:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Realiza petición PUT a la API
+   * @param {string} endpoint - Endpoint de la API
+   * @param {Object} data - Datos a enviar
+   * @param {Object} options - Opciones adicionales
+   * @returns {Promise} - Promesa con datos de la respuesta
+   */
+  put: async (endpoint, data, options = {}) => {
+    try {
+      const response = await apiService.put(endpoint, data, options);
+      return response;
+    } catch (error) {
+      console.error('Error en PUT:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Realiza petición POST a la API
+   * @param {string} endpoint - Endpoint de la API
+   * @param {Object} data - Datos a enviar
+   * @param {Object} options - Opciones adicionales
+   * @returns {Promise} - Promesa con datos de la respuesta
+   */
+  post: async (endpoint, data, options = {}) => {
+    try {
+      const response = await apiService.post(endpoint, data, options);
+      return response;
+    } catch (error) {
+      console.error('Error en POST:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Realiza petición DELETE a la API
+   * @param {string} endpoint - Endpoint de la API
+   * @param {Object} options - Opciones adicionales
+   * @returns {Promise} - Promesa con datos de la respuesta
+   */
+  delete: async (endpoint, options = {}) => {
+    try {
+      const response = await apiService.delete(endpoint, options);
+      return response;
+    } catch (error) {
+      console.error('Error en DELETE:', error);
+      throw error;
+    }
   }
 };
 

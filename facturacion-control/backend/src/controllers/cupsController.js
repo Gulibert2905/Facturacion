@@ -104,6 +104,26 @@ const updateService = async (req, res) => {
   }
 };
 
+// Eliminar un servicio CUPS
+const deleteService = async (req, res) => {
+  try {
+    const { cupsCode } = req.params;
+    
+    const service = await Service.findOne({ cupsCode });
+    if (!service) {
+      return res.status(404).json({ message: 'Servicio no encontrado' });
+    }
+    
+    // Marcar como inactivo en lugar de eliminar físicamente
+    service.status = 'inactive';
+    await service.save();
+    
+    res.json({ message: 'Servicio eliminado correctamente' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 // Asignar tarifa a un servicio para un contrato específico
 const assignTariff = async (req, res) => {
   try {
@@ -352,6 +372,7 @@ module.exports = {
   getServiceByCupsCode,
   createService,
   updateService,
+  deleteService,
   assignTariff,
   removeTariff,
   importServices,
