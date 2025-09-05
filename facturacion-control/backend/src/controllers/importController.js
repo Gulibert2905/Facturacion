@@ -13,32 +13,32 @@ const generateTemplate = async (req, res) => {
 
     if (type === 'patients') {
       worksheet.columns = [
-        { header: 'documentType', key: 'documentType', width: 15 },
-        { header: 'documentNumber', key: 'documentNumber', width: 15 },
-        { header: 'firstName', key: 'firstName', width: 15 },
-        { header: 'secondName', key: 'secondName', width: 15 },
-        { header: 'firstLastName', key: 'firstLastName', width: 15 },
-        { header: 'secondLastName', key: 'secondLastName', width: 15 },
-        { header: 'birthDate', key: 'birthDate', width: 15 },
-        { header: 'gender', key: 'gender', width: 15 },
+        { header: 'tipoDocumento', key: 'tipoDocumento', width: 15 },
+        { header: 'numeroDocumento', key: 'numeroDocumento', width: 15 },
+        { header: 'primerNombre', key: 'primerNombre', width: 15 },
+        { header: 'segundoNombre', key: 'segundoNombre', width: 15 },
+        { header: 'primerApellido', key: 'primerApellido', width: 15 },
+        { header: 'segundoApellido', key: 'segundoApellido', width: 15 },
+        { header: 'fechaNacimiento', key: 'fechaNacimiento', width: 15 },
+        { header: 'genero', key: 'genero', width: 15 },
         { header: 'regimen', key: 'regimen', width: 15 },
-        { header: 'municipality', key: 'municipality', width: 15 },
+        { header: 'municipio', key: 'municipio', width: 15 },
         { header: 'ciudadNacimiento', key: 'ciudadNacimiento', width: 20 },
         { header: 'ciudadExpedicion', key: 'ciudadExpedicion', width: 20 }
       ];
 
       // Datos de ejemplo
       worksheet.addRow({
-        documentType: 'CC',
-        documentNumber: '1065831001',
-        firstName: 'Juan',
-        secondName: 'Carlos',
-        firstLastName: 'Pérez',
-        secondLastName: 'Gómez',
-        birthDate: '1990-01-15',
-        gender: "M",
+        tipoDocumento: 'CC',
+        numeroDocumento: '1065831001',
+        primerNombre: 'Juan',
+        segundoNombre: 'Carlos',
+        primerApellido: 'Pérez',
+        segundoApellido: 'Gómez',
+        fechaNacimiento: '1990-01-15',
+        genero: "M",
         regimen: 'Contributivo',
-        municipality: 'Valledupar',
+        municipio: 'Valledupar',
         ciudadNacimiento: 'Valledupar',
         ciudadExpedicion: 'Valledupar'
       });
@@ -47,57 +47,57 @@ const generateTemplate = async (req, res) => {
     else if (type === 'services') {
       // Definir columnas para servicios
       worksheet.columns = [
-        { header: 'documentNumber', key: 'documentNumber', width: 15 },
-        { header: 'documentType', key: 'documentType', width: 15 },
-        { header: 'firstName', key: 'firstName', width: 15 },
-        { header: 'secondName', key: 'secondName', width: 15 },
-        { header: 'firstLastName', key: 'firstLastName', width: 15 },
-        { header: 'secondLastName', key: 'secondLastName', width: 15 },
-        { header: 'birthDate', key: 'birthDate', width: 15 },
-        { header: 'gender', key: 'gender', width: 10 },
+        { header: 'numeroDocumento', key: 'numeroDocumento', width: 15 },
+        { header: 'tipoDocumento', key: 'tipoDocumento', width: 15 },
+        { header: 'primerNombre', key: 'primerNombre', width: 15 },
+        { header: 'segundoNombre', key: 'segundoNombre', width: 15 },
+        { header: 'primerApellido', key: 'primerApellido', width: 15 },
+        { header: 'segundoApellido', key: 'segundoApellido', width: 15 },
+        { header: 'fechaNacimiento', key: 'fechaNacimiento', width: 15 },
+        { header: 'genero', key: 'genero', width: 10 },
         { header: 'ciudadNacimiento', key: 'ciudadNacimiento', width: 20 },
         { header: 'ciudadExpedicion', key: 'ciudadExpedicion', width: 20 },
         
         // Datos del servicio
-        { header: 'serviceDate', key: 'serviceDate', width: 15 },
-        { header: 'cupsCode', key: 'cupsCode', width: 15 },
-        { header: 'description', key: 'description', width: 30 },
-        { header: 'value', key: 'value', width: 12 }
+        { header: 'fechaServicio', key: 'fechaServicio', width: 15 },
+        { header: 'codigoCups', key: 'codigoCups', width: 15 },
+        { header: 'descripcion', key: 'descripcion', width: 30 },
+        { header: 'valor', key: 'valor', width: 12 }
       ];
 
       // Agregar datos de ejemplo
       const servicesData = [
         {
-          documentNumber: '1065831001',
-          documentType: 'CC',
-          firstName: 'Juan',
-          secondName: 'Carlos',
-          firstLastName: 'Pérez',
-          secondLastName: 'Gómez',
-          birthDate: '1990-01-15',
-          gender: 'M',
+          numeroDocumento: '1065831001',
+          tipoDocumento: 'CC',
+          primerNombre: 'Juan',
+          segundoNombre: 'Carlos',
+          primerApellido: 'Pérez',
+          segundoApellido: 'Gómez',
+          fechaNacimiento: '1990-01-15',
+          genero: 'M',
           ciudadNacimiento: 'Valledupar',
           ciudadExpedicion: 'Valledupar',
-          serviceDate: '2024-01-15',
-          cupsCode: '890201',
-          description: 'Consulta medicina general',
-          value: 35000
+          fechaServicio: '2024-01-15',
+          codigoCups: '890201',
+          descripcion: 'Consulta medicina general',
+          valor: 35000
         },
         {
-          documentNumber: '1065598462',
-          documentType: 'CC',
-          firstName: 'Juan',
-          secondName: 'Caos',
-          firstLastName: 'Pez',
-          secondLastName: 'Góez',
-          birthDate: '1990-01-12',
-          gender: 'M',
+          numeroDocumento: '1065598462',
+          tipoDocumento: 'CC',
+          primerNombre: 'Juan',
+          segundoNombre: 'Caos',
+          primerApellido: 'Pez',
+          segundoApellido: 'Góez',
+          fechaNacimiento: '1990-01-12',
+          genero: 'M',
           ciudadNacimiento: 'Barranquilla',
           ciudadExpedicion: 'Barranquilla',
-          serviceDate: '2024-01-15',
-          cupsCode: '890201',
-          description: 'Consulta medicina general',
-          value: 35000
+          fechaServicio: '2024-01-15',
+          codigoCups: '890201',
+          descripcion: 'Consulta medicina general',
+          valor: 35000
         },
 
       ];
@@ -190,19 +190,19 @@ const importPatients = async (req, res) => {
 
     // Verificar documentos existentes
     const existingDocuments = await Patient.find({
-      documentNumber: { $in: data.map(p => p.documentNumber) }
+      numeroDocumento: { $in: data.map(p => p.numeroDocumento) }
     });
 
     // Crear un Set de documentos existentes para búsqueda rápida
-    const existingDocumentNumbers = new Set(existingDocuments.map(p => p.documentNumber));
+    const existingDocumentNumbers = new Set(existingDocuments.map(p => p.numeroDocumento));
 
     // Filtrar datos nuevos vs duplicados
     const newData = [];
     data.forEach(patient => {
-      if (existingDocumentNumbers.has(patient.documentNumber)) {
+      if (existingDocumentNumbers.has(patient.numeroDocumento)) {
         results.duplicates.push({
-          documentNumber: patient.documentNumber,
-          name: `${patient.firstName} ${patient.firstLastName}`
+          numeroDocumento: patient.numeroDocumento,
+          name: `${patient.primerNombre} ${patient.primerApellido}`
         });
       } else {
         newData.push(patient);
@@ -258,69 +258,69 @@ const importServices = async (req, res) => {
     for (const service of data) {
       try {
         // Limpiar y procesar el valor monetario si existe
-        let value = 0;
-        if (service.value) {
-          if (typeof service.value === 'string') {
+        let valor = 0;
+        if (service.valor) {
+          if (typeof service.valor === 'string') {
             // Remover puntos y convertir a número
-            const cleanValue = service.value.replace(/\./g, '').replace(',', '.');
-            value = Number(cleanValue);
+            const cleanValue = service.valor.replace(/\./g, '').replace(',', '.');
+            valor = Number(cleanValue);
           } else {
-            value = Number(service.value);
+            valor = Number(service.valor);
           }
           
-          if (isNaN(value)) {
-            value = 0;
+          if (isNaN(valor)) {
+            valor = 0;
           }
         }
         
         // Validar la fecha del servicio
-        let serviceDate;
+        let fechaServicio;
         try {
-          serviceDate = new Date(service.serviceDate);
-          if (isNaN(serviceDate.getTime())) {
+          fechaServicio = new Date(service.fechaServicio);
+          if (isNaN(fechaServicio.getTime())) {
             throw new Error('Fecha de servicio inválida');
           }
         } catch (dateError) {
-          throw new Error(`Fecha de servicio inválida: ${service.serviceDate}`);
+          throw new Error(`Fecha de servicio inválida: ${service.fechaServicio}`);
         }
 
         // Buscar o crear paciente
-        let patient = await Patient.findOne({ documentNumber: service.documentNumber });
+        let patient = await Patient.findOne({ numeroDocumento: service.numeroDocumento });
         
-        if (!patient && service.documentType) {
+        if (!patient && service.tipoDocumento) {
           // Crear nuevo paciente si no existe
           patient = await Patient.create({
-            documentType: service.documentType,
-            documentNumber: service.documentNumber,
-            firstName: service.firstName || 'Paciente',
-            secondName: service.secondName || '',
-            firstLastName: service.firstLastName || 'Sin Apellido',
-            secondLastName: service.secondLastName || '',
-            birthDate: service.birthDate ? new Date(service.birthDate) : null,
-            gender: service.gender || '',
+            tipoDocumento: service.tipoDocumento,
+            numeroDocumento: service.numeroDocumento,
+            primerNombre: service.primerNombre || 'Paciente',
+            segundoNombre: service.segundoNombre || '',
+            primerApellido: service.primerApellido || 'Sin Apellido',
+            segundoApellido: service.segundoApellido || '',
+            fechaNacimiento: service.fechaNacimiento ? new Date(service.fechaNacimiento) : null,
+            genero: service.genero || '',
             ciudadNacimiento: service.ciudadNacimiento || '',
             ciudadExpedicion: service.ciudadExpedicion || '',
-            active: true
+            activo: true
           });
           
           results.patientsCreated.push({
-            documentNumber: patient.documentNumber,
-            name: patient.fullName
+            numeroDocumento: patient.numeroDocumento,
+            name: patient.nombreCompleto
           });
         }
 
         if (!patient) {
-          throw new Error(`No se encontró el paciente con documento ${service.documentNumber} y no se proporcionaron datos suficientes para crearlo`);
+          throw new Error(`No se encontró el paciente con documento ${service.numeroDocumento} y no se proporcionaron datos suficientes para crearlo`);
         }
 
         // Preparar datos del servicio - sin contractId ni company
         const serviceData = {
-          patientId: patient._id,
-          documentNumber: service.documentNumber,
-          cupsCode: service.cupsCode,
-          serviceDate: serviceDate,
-          description: service.description || '',
-          value: value,
+          pacienteId: patient._id,
+          numeroDocumento: service.numeroDocumento,
+          codigoCups: service.codigoCups,
+          fechaServicio: fechaServicio,
+          descripcion: service.descripcion || '',
+          valor: valor,
           // Estos campos se asignarán durante la prefacturación
           company: null,
           contractId: null
@@ -328,24 +328,24 @@ const importServices = async (req, res) => {
 
         // Verificar duplicado (mismo paciente, cups y fecha sin contrato asignado)
         const existingService = await ServiceRecord.findOne({
-          patientId: patient._id,
-          cupsCode: serviceData.cupsCode,
-          serviceDate: serviceDate,
-          contractId: null
+          pacienteId: patient._id,
+          codigoCups: serviceData.codigoCups,
+          fechaServicio: fechaServicio,
+          contratoId: null
         });
 
         if (existingService) {
           results.duplicates.push({
-            documentNumber: serviceData.documentNumber,
-            cupsCode: serviceData.cupsCode,
-            serviceDate: serviceData.serviceDate
+            numeroDocumento: serviceData.numeroDocumento,
+            codigoCups: serviceData.codigoCups,
+            fechaServicio: serviceData.fechaServicio
           });
         } else {
           const newService = await ServiceRecord.create(serviceData);
           results.success.push({
-            documentNumber: newService.documentNumber,
-            cupsCode: newService.cupsCode,
-            serviceDate: newService.serviceDate
+            numeroDocumento: newService.numeroDocumento,
+            codigoCups: newService.codigoCups,
+            fechaServicio: newService.fechaServicio
           });
         }
       } catch (error) {

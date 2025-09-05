@@ -114,11 +114,21 @@ const deleteService = async (req, res) => {
       return res.status(404).json({ message: 'Servicio no encontrado' });
     }
     
-    // Marcar como inactivo en lugar de eliminar físicamente
-    service.status = 'inactive';
-    await service.save();
+    // Verificar si tiene tarifas asociadas
+    if (service.contracts && service.contracts.length > 0) {
+      return res.status(400).json({ 
+        message: 'No se puede eliminar el servicio porque tiene tarifas asociadas. Elimine primero las tarifas.' 
+      });
+    }
     
-    res.json({ message: 'Servicio eliminado correctamente' });
+    // Eliminar físicamente si no tiene tarifas
+    await Service.deleteOne({ cupsCode });
+    
+    res.json({ 
+      message: 'Servicio eliminado correctamente',
+      deleted: true,
+      cupsCode 
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

@@ -1,0 +1,53 @@
+# Docker Compose para desarrollo
+version: '3.8'
+
+services:
+  # Base de datos MongoDB
+  mongodb:
+    image: mongo:6.0
+    container_name: facturacion-db-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: facturacion123
+      MONGO_INITDB_DATABASE: facturacion
+    volumes:
+      - mongodb_data_dev:/data/db
+      - ./mongodb-init:/docker-entrypoint-initdb.d
+    networks:
+      - facturacion-network
+
+  # Backend API (modo desarrollo)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: facturacion-backend-dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:facturacion123@mongodb:27017/facturacion?authSource=admin
+      JWT_SECRET: dev-jwt-secret-key
+      JWT_EXPIRE: 30d
+      BCRYPT_ROUNDS: 12
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/logs:/app/logs
+    networks:
+      - facturacion-network
+
+volumes:
+  mongodb_data_dev:
+    driver: local
+
+networks:
+  facturacion-network:
+    driver: bridge

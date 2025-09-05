@@ -26,8 +26,12 @@ import {
   FormControlLabel,
   Alert,
   Tooltip,
-  Pagination
+  Pagination,
+  Autocomplete,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
+import authService from '../components/services/authService';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -66,23 +70,37 @@ const UserManagement = () => {
     email: '',
     password: '',
     fullName: '',
-    role: 'facturador',
+    role: '',
     department: '',
     phone: '',
     active: true,
-    customPermissions: []
+    customPermissions: [],
+    assignedCompanies: [],
+    canViewAllCompanies: false
   });
+
+  // Estado para las empresas disponibles
+  const [companies, setCompanies] = useState([]);
 
   useEffect(() => {
     fetchSystemInfo();
     fetchUsers();
+    fetchCompanies();
   }, [pagination.page, pagination.limit, filters]);
+
+  // Set default role when systemInfo is loaded
+  useEffect(() => {
+    if (systemInfo.roles.length > 0 && !formData.role && !editingUser) {
+      const defaultRole = systemInfo.roles.find(r => r.value === 'facturador')?.value || systemInfo.roles[0]?.value || '';
+      setFormData(prev => ({ ...prev, role: defaultRole }));
+    }
+  }, [systemInfo.roles, formData.role, editingUser]);
 
   const fetchSystemInfo = async () => {
     try {
-      const response = await fetch('/api/users/system-info', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/users/system-info`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
       
@@ -95,6 +113,23 @@ const UserManagement = () => {
     }
   };
 
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/companies`, {
+        headers: {
+          'Authorization': `Bearer ${authService.getToken()}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data.companies || data);
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -104,9 +139,9 @@ const UserManagement = () => {
         ...filters
       });
 
-      const response = await fetch(`/api/users?${queryParams}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/users?${queryParams}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
       
@@ -140,7 +175,9 @@ const UserManagement = () => {
         department: user.department || '',
         phone: user.phone || '',
         active: user.active,
-        customPermissions: user.customPermissions || []
+        customPermissions: user.customPermissions || [],
+        assignedCompanies: user.assignedCompanies || [],
+        canViewAllCompanies: user.canViewAllCompanies || false
       });
     } else {
       setEditingUser(null);
@@ -149,11 +186,13 @@ const UserManagement = () => {
         email: '',
         password: '',
         fullName: '',
-        role: 'facturador',
+        role: systemInfo.roles.length > 0 ? systemInfo.roles.find(r => r.value === 'facturador')?.value || systemInfo.roles[0]?.value || '' : '',
         department: '',
         phone: '',
         active: true,
-        customPermissions: []
+        customPermissions: [],
+        assignedCompanies: [],
+        canViewAllCompanies: false
       });
     }
     setOpenDialog(true);
@@ -169,17 +208,18 @@ const UserManagement = () => {
     e.preventDefault();
     
     try {
-      const url = editingUser 
-        ? `/api/users/${editingUser._id}` 
-        : '/api/users';
-        
       const method = editingUser ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const fullUrl = editingUser 
+        ? `${apiUrl}/api/users/${editingUser._id}` 
+        : `${apiUrl}/api/users`;
+        
+      const response = await fetch(fullUrl, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         },
         body: JSON.stringify(formData)
       });
@@ -198,10 +238,10 @@ const UserManagement = () => {
 
   const handleToggleStatus = async (userId) => {
     try {
-      const response = await fetch(`/api/users/${userId}/toggle-status`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/users/${userId}/toggle-status`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${authService.getToken()}`
         }
       });
 
@@ -319,6 +359,7 @@ const UserManagement = () => {
               <TableCell>Email</TableCell>
               <TableCell>Rol</TableCell>
               <TableCell>Departamento</TableCell>
+              <TableCell>Empresas</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Último Login</TableCell>
               <TableCell align="center">Acciones</TableCell>
@@ -338,6 +379,21 @@ const UserManagement = () => {
                   />
                 </TableCell>
                 <TableCell>{user.department || '-'}</TableCell>
+                <TableCell>
+                  {user.canViewAllCompanies ? (
+                    <Chip label="Todas las empresas" color="primary" size="small" />
+                  ) : user.assignedCompanies && user.assignedCompanies.length > 0 ? (
+                    <Tooltip title={user.assignedCompanies.map(c => c.nombre || c.name).join(', ')}>
+                      <Chip 
+                        label={`${user.assignedCompanies.length} empresa${user.assignedCompanies.length > 1 ? 's' : ''}`} 
+                        color="info" 
+                        size="small" 
+                      />
+                    </Tooltip>
+                  ) : (
+                    <Chip label="Sin empresas" color="warning" size="small" />
+                  )}
+                </TableCell>
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     <Chip
@@ -393,8 +449,15 @@ const UserManagement = () => {
       </Box>
 
       {/* Dialog para crear/editar usuario */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog} 
+        maxWidth="md" 
+        fullWidth
+        aria-labelledby="user-dialog-title"
+        aria-describedby="user-dialog-description"
+      >
+        <DialogTitle id="user-dialog-title">
           <Box display="flex" alignItems="center">
             <SecurityIcon sx={{ mr: 1 }} />
             {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
@@ -485,6 +548,51 @@ const UserManagement = () => {
                 fullWidth
               />
               
+              {/* Asignación de Empresas */}
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.canViewAllCompanies}
+                      onChange={(e) => setFormData({...formData, canViewAllCompanies: e.target.checked, assignedCompanies: e.target.checked ? [] : formData.assignedCompanies})}
+                    />
+                  }
+                  label="Puede ver todas las empresas"
+                />
+                
+                {!formData.canViewAllCompanies && (
+                  <Autocomplete
+                    multiple
+                    options={companies}
+                    getOptionLabel={(option) => option.nombre || option.name || ''}
+                    value={companies.filter(company => formData.assignedCompanies.includes(company._id))}
+                    onChange={(event, newValue) => {
+                      setFormData({...formData, assignedCompanies: newValue.map(company => company._id)});
+                    }}
+                    renderOption={(props, option, { selected }) => {
+                      const { key, ...otherProps } = props;
+                      return (
+                        <li key={key} {...otherProps}>
+                          <Checkbox
+                            style={{ marginRight: 8 }}
+                            checked={selected}
+                          />
+                          <ListItemText primary={option.nombre || option.name} secondary={`NIT: ${option.nit}`} />
+                        </li>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Empresas asignadas"
+                        placeholder="Seleccionar empresas..."
+                        helperText="Selecciona las empresas que puede ver este usuario"
+                      />
+                    )}
+                  />
+                )}
+              </Box>
+
               <FormControlLabel
                 control={
                   <Switch

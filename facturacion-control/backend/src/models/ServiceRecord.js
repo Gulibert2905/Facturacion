@@ -2,49 +2,49 @@
 const mongoose = require('mongoose');
 
 const serviceRecordSchema = new mongoose.Schema({
-    patientId: {
+    pacienteId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Patient',
         required: true
     },
-    company: {  // Referencia a la empresa
+    empresa: {  // Referencia a la empresa
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Company',
         default: null  // Permitir que sea null
     },
-    contractId: {  // Referencia al contrato
+    contratoId: {  // Referencia al contrato
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Contract',
         default: null  // Permitir que sea null
     },
-    documentNumber: {
+    numeroDocumento: {
         type: String,
         required: true
     },
-    cupsCode: {
+    codigoCups: {
         type: String,
         required: true
     },
-    serviceDate: {
+    fechaServicio: {
         type: Date,
         required: true
     },
-    value: {
+    valor: {
         type: Number,
         default: 0  // Valor por defecto
     },
-    description: String,
-    authorization: String,
-    diagnosis: String,
-    status: {
+    descripcion: String,
+    autorizacion: String,
+    diagnostico: String,
+    estado: {
         type: String,
         default: 'pendiente'
     },
-    isPrefactured: {
+    estaPrefacturado: {
         type: Boolean,
         default: false
     },
-    prefacturedAt: Date
+    fechaPrefacturacion: Date
 }, {
     timestamps: true,
     toJSON: { getters: true }
@@ -52,10 +52,10 @@ const serviceRecordSchema = new mongoose.Schema({
 
 // Modificar el índice para permitir servicios duplicados con diferentes contratos
 serviceRecordSchema.index({
-    patientId: 1,
-    cupsCode: 1,
-    serviceDate: 1,
-    contractId: 1
+    pacienteId: 1,
+    codigoCups: 1,
+    fechaServicio: 1,
+    contratoId: 1
 }, { unique: true });
 
 module.exports = mongoose.model('ServiceRecord', serviceRecordSchema);

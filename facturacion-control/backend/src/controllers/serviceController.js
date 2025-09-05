@@ -64,7 +64,8 @@ const getServiceRecords = async (req, res) => {
       municipality
     } = req.query;
 
-    const query = {};
+    // Usar el filtro de empresa desde el middleware
+    const query = req.createCompanyFilter ? req.createCompanyFilter() : {};
 
     if (startDate && endDate) {
       query.serviceDate = {
@@ -80,6 +81,7 @@ const getServiceRecords = async (req, res) => {
     const records = await ServiceRecord.find(query)
       .populate('contractId', 'name type')
       .populate('createdBy', 'username fullName')
+      .populate('empresa', 'nombre nit codigo')
       .sort({ serviceDate: -1 });
 
     res.json(records);

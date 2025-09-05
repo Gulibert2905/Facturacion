@@ -81,6 +81,18 @@ const userSchema = new mongoose.Schema({
     // Para usuarios con rol 'custom' - permisos granulares
     customPermissions: [permissionSchema],
     
+    // Empresas asignadas al usuario
+    assignedCompanies: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Company'
+    }],
+    
+    // Si es true, puede ver todas las empresas (solo superadmin y algunos admin)
+    canViewAllCompanies: {
+        type: Boolean,
+        default: false
+    },
+    
     // Información adicional
     department: {
         type: String,
@@ -251,6 +263,28 @@ userSchema.methods.isValidResetToken = function(token) {
 userSchema.methods.clearPasswordResetToken = function() {
     this.resetPasswordToken = null;
     this.resetPasswordExpires = null;
+};
+
+// Método para obtener las empresas que puede ver el usuario
+userSchema.methods.getAccessibleCompanies = function() {
+    // Superadmin puede ver todas las empresas
+    if (this.role === 'superadmin' || this.canViewAllCompanies) {
+        return 'all'; // Retorna 'all' para indicar acceso a todas las empresas
+    }
+    
+    // Para otros roles, retorna solo las empresas asignadas
+    return this.assignedCompanies;
+};
+
+// Método para verificar si puede acceder a una empresa específica
+userSchema.methods.canAccessCompany = function(companyId) {
+    // Superadmin puede acceder a todas las empresas
+    if (this.role === 'superadmin' || this.canViewAllCompanies) {
+        return true;
+    }
+    
+    // Verificar si la empresa está en la lista de empresas asignadas
+    return this.assignedCompanies.some(id => id.toString() === companyId.toString());
 };
 
 // Índices para optimización (removidos los duplicados que están definidos como unique: true)

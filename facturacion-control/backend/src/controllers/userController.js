@@ -21,7 +21,9 @@ const getUsers = async (req, res) => {
         const filter = {};
         
         if (role) filter.role = role;
-        if (active !== undefined) filter.active = active === 'true';
+        if (active !== undefined && active !== 'all') {
+            filter.active = active === 'true';
+        }
         if (search) {
             filter.$or = [
                 { username: { $regex: search, $options: 'i' } },
@@ -41,6 +43,7 @@ const getUsers = async (req, res) => {
                 .select('-password')
                 .populate('createdBy', 'fullName username')
                 .populate('updatedBy', 'fullName username')
+                .populate('assignedCompanies', 'nombre nit codigo estado')
                 .sort(sort)
                 .skip(skip)
                 .limit(parseInt(limit)),
@@ -92,7 +95,8 @@ const getUser = async (req, res) => {
         const user = await User.findById(req.params.id)
             .select('-password')
             .populate('createdBy', 'fullName username')
-            .populate('updatedBy', 'fullName username');
+            .populate('updatedBy', 'fullName username')
+            .populate('assignedCompanies', 'nombre nit codigo estado');
 
         if (!user) {
             return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -132,7 +136,9 @@ const createUser = async (req, res) => {
             role,
             department,
             phone,
-            customPermissions
+            customPermissions,
+            assignedCompanies,
+            canViewAllCompanies
         } = req.body;
 
         // Validar campos requeridos
@@ -168,7 +174,9 @@ const createUser = async (req, res) => {
             role: role || 'facturador',
             department: department || '',
             phone: phone || '',
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            canViewAllCompanies: canViewAllCompanies || false,
+            assignedCompanies: canViewAllCompanies ? [] : (assignedCompanies || [])
         };
 
         // Si es rol custom, agregar permisos personalizados
@@ -178,6 +186,9 @@ const createUser = async (req, res) => {
 
         const user = new User(userData);
         await user.save();
+        
+        // Poblar empresas asignadas para la respuesta
+        await user.populate('assignedCompanies', 'nombre nit codigo estado');
 
         // Respuesta sin password
         const userResponse = {
@@ -235,6 +246,11 @@ const updateUser = async (req, res) => {
         // Agregar metadatos
         updates.updatedBy = req.user._id;
 
+        // Si se está actualizando canViewAllCompanies a true, limpiar assignedCompanies
+        if (updates.canViewAllCompanies === true) {
+            updates.assignedCompanies = [];
+        }
+
         const user = await User.findByIdAndUpdate(
             userId,
             updates,
@@ -242,7 +258,8 @@ const updateUser = async (req, res) => {
                 new: true, 
                 runValidators: true 
             }
-        ).select('-password');
+        ).select('-password')
+        .populate('assignedCompanies', 'nombre nit codigo estado');
 
         if (!user) {
             return res.status(404).json({ message: 'Usuario no encontrado' });

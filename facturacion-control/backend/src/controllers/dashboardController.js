@@ -634,7 +634,40 @@ const getDashboardStatsAdvanced = async (req, res) => {
         },
         { $sort: { count: -1 } },
         { $limit: 10 }
-      ])
+      ]),
+      
+      // Obtener contratos con techo y su progreso
+      (async () => {
+        try {
+          const contracts = await Contract.find({
+            tieneTecho: true,
+            status: 'active'
+          }).populate('company', 'name');
+          
+          const contractsWithProgress = await Promise.all(
+            contracts.map(async (contract) => {
+              await contract.actualizarValorFacturado();
+              
+              return {
+                _id: contract._id,
+                name: contract.name,
+                company: contract.company,
+                valorTecho: contract.valorTecho,
+                valorFacturado: contract.valorFacturado,
+                valorDisponible: contract.valorDisponible,
+                porcentajeEjecutado: contract.porcentajeEjecutado,
+                estado: contract.estadoTecho,
+                alertas: contract.alertas
+              };
+            })
+          );
+          
+          return contractsWithProgress;
+        } catch (error) {
+          logger.error('Error obteniendo contratos con techo:', error);
+          return [];
+        }
+      })()
     ]);
 
     // Formatear respuesta compatible con Dashboard básico

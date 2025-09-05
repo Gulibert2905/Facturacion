@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, requirePermission, MODULES, ACTIONS } = require('../middleware/auth');
+const { companyAccessMiddleware } = require('../middleware/companyAccess');
 const { validateServiceRecord } = require('../middleware/serviceValidation');
 const { sanitizeInput, validateServiceData, validatePagination } = require('../middleware/validation');
 const { updateContractValues } = require('../controllers/contractController');
@@ -13,8 +14,9 @@ const {
   assignContract
 } = require('../controllers/serviceController');
 
-// Todas las rutas requieren autenticación
+// Todas las rutas requieren autenticación y filtrado por empresa
 router.use(protect);
+router.use(companyAccessMiddleware);
 
 // Aplicar middlewares en orden: validación -> crear servicio -> actualizar contrato
 router.post('/record', 

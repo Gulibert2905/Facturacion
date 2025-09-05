@@ -17,6 +17,7 @@ import CompanyManagement from './pages/CompanyManagement';
 import ContractManagement from './pages/ContractManagement';
 import AppProviders from './components/AppProviders';
 import AdvancedDashboard from './pages/AdvancedDashboard';
+import PowerBIDashboard from './pages/PowerBIDashboard';
 import AdvancedReports from './pages/AdvancedReports';
 import UserManagement from './pages/UserManagement';
 import RolePermissions from './pages/RolePermissions';
@@ -130,7 +131,7 @@ function App() {
         <Route path="/advanced-dashboard" element={
           <ProtectedRoute>
             <Layout>
-              <AdvancedDashboard />
+              <PowerBIDashboard />
             </Layout>
           </ProtectedRoute>
         } />

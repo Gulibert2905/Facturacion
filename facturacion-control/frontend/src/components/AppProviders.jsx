@@ -113,7 +113,7 @@ const AppProviders = ({ children }) => {
         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
           <NotificationProvider>
             <LoadingProvider>
-              <BrowserRouter>
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <AuthProvider>
                   {/* Add the new context providers */}
                   <AuditProvider>

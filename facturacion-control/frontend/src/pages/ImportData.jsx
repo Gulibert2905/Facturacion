@@ -105,10 +105,10 @@ function ImportData() {
 
   const validateServiceData = (row) => {
     const requiredFields = [
-      'documentNumber',
-      'cupsCode',
-      'serviceDate',
-      'value'
+      'numeroDocumento',
+      'codigoCups',
+      'fechaServicio',
+      'valor'
     ];
   
     const errors = [];
@@ -121,20 +121,20 @@ function ImportData() {
     }
   
     // Validar formato de fecha
-    if (row.serviceDate) {
-      const date = new Date(row.serviceDate);
+    if (row.fechaServicio) {
+      const date = new Date(row.fechaServicio);
       if (isNaN(date.getTime())) {
         errors.push('Fecha de servicio inválida (usar formato YYYY-MM-DD)');
       }
     }
   
     // Validar valor 
-    if (!row.value) {
+    if (!row.valor) {
       errors.push('El valor del servicio es obligatorio');
     }
   
-    // Validar documentNumber no sea null o vacío
-    if (!row.documentNumber || row.documentNumber.trim() === '') {
+    // Validar numeroDocumento no sea null o vacío
+    if (!row.numeroDocumento || row.numeroDocumento.trim() === '') {
       errors.push('El número de documento es obligatorio');
     }
   
@@ -146,13 +146,47 @@ function ImportData() {
       isValid: true, 
       data: {
         ...row,
-        contractId: row.contractId || '',
+        contratoId: row.contratoId || '',
         // No modificamos el valor aquí, dejaremos que el backend lo maneje
-        description: row.description || '',
-        authorization: row.authorization || '',
-        diagnosis: row.diagnosis || ''
+        descripcion: row.descripcion || '',
+        autorizacion: row.autorizacion || '',
+        diagnostico: row.diagnostico || ''
       }
     };
+  };
+
+  // Validación específica para ciudades
+  const validateCityData = (row) => {
+    const requiredFields = ['nombre', 'departamento'];
+    const errors = [];
+
+    // Validar campos obligatorios
+    for (const field of requiredFields) {
+      if (!row.hasOwnProperty(field) || row[field] === null || row[field] === '') {
+        errors.push(`El campo ${field} es obligatorio`);
+      }
+    }
+
+    // Validar que nombre no sea muy corto o muy largo
+    if (row.nombre && (typeof row.nombre !== 'string' || row.nombre.trim().length < 2 || row.nombre.trim().length > 100)) {
+      errors.push('El nombre debe tener entre 2 y 100 caracteres');
+    }
+
+    // Validar que departamento no sea muy corto o muy largo
+    if (row.departamento && (typeof row.departamento !== 'string' || row.departamento.trim().length < 2 || row.departamento.trim().length > 100)) {
+      errors.push('El departamento debe tener entre 2 y 100 caracteres');
+    }
+
+    // Validar código si está presente (opcional)
+    if (row.codigo && (typeof row.codigo !== 'string' || row.codigo.trim().length > 20)) {
+      errors.push('El código debe tener máximo 20 caracteres');
+    }
+
+    if (errors.length > 0) {
+      return { isValid: false, errors };
+    }
+
+    return { isValid: true, errors: [] };
   };
 
   // Función de manejo de archivos 
@@ -211,9 +245,17 @@ function ImportData() {
           // Validar cada fila según el tipo
           const errors = [];
           data.forEach((row, index) => {
-            const validationResult = type === 'patients' 
-              ? validatePatientData(row)
-              : validateServiceData(row);
+            let validationResult;
+            
+            if (type === 'patients') {
+              validationResult = validatePatientData(row);
+            } else if (type === 'services') {
+              validationResult = validateServiceData(row);
+            } else if (type === 'cities') {
+              validationResult = validateCityData(row);
+            } else {
+              validationResult = { isValid: false, errors: ['Tipo de importación no válido'] };
+            }
   
             if (!validationResult.isValid) {
               errors.push(`Error en la fila ${index + 1}: ${validationResult.errors.join(', ')}`);

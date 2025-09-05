@@ -56,7 +56,13 @@ function ContractManagement() {
     type: 'OTROS',
     validFrom: new Date(),
     validTo: null,
-    status: 'active'
+    status: 'active',
+    tieneTecho: false,
+    valorTecho: '',
+    alertas: {
+      porcentajeAlerta: 80,
+      porcentajeCritico: 90
+    }
   });
   
   // Estado para alertas
@@ -142,7 +148,13 @@ function ContractManagement() {
       setCurrentContract({
         ...contract,
         validFrom: contract.validFrom ? new Date(contract.validFrom) : new Date(),
-        validTo: contract.validTo ? new Date(contract.validTo) : null
+        validTo: contract.validTo ? new Date(contract.validTo) : null,
+        tieneTecho: contract.tieneTecho || false,
+        valorTecho: contract.valorTecho || '',
+        alertas: contract.alertas || {
+          porcentajeAlerta: 80,
+          porcentajeCritico: 90
+        }
       });
     } else {
       setCurrentContract({
@@ -152,7 +164,13 @@ function ContractManagement() {
         type: 'OTROS',
         validFrom: new Date(),
         validTo: null,
-        status: 'active'
+        status: 'active',
+        tieneTecho: false,
+        valorTecho: '',
+        alertas: {
+          porcentajeAlerta: 80,
+          porcentajeCritico: 90
+        }
       });
     }
     setOpenDialog(true);
@@ -176,6 +194,32 @@ function ContractManagement() {
       ...prev, 
       status: e.target.checked ? 'active' : 'inactive' 
     }));
+  };
+
+  const handleTechoChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (name === 'tieneTecho') {
+      setCurrentContract(prev => ({ 
+        ...prev, 
+        tieneTecho: checked,
+        valorTecho: checked ? prev.valorTecho : ''
+      }));
+    } else if (name === 'valorTecho') {
+      setCurrentContract(prev => ({ 
+        ...prev, 
+        valorTecho: value
+      }));
+    } else if (name.startsWith('alertas.')) {
+      const alertKey = name.replace('alertas.', '');
+      setCurrentContract(prev => ({ 
+        ...prev, 
+        alertas: {
+          ...prev.alertas,
+          [alertKey]: parseInt(value) || 0
+        }
+      }));
+    }
   };
   
   const handleSaveContract = async () => {
@@ -333,6 +377,7 @@ function ContractManagement() {
               <TableCell>Empresa</TableCell>
               <TableCell>Tipo</TableCell>
               <TableCell>Vigencia</TableCell>
+              <TableCell>Techo Presupuestal</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Acciones</TableCell>
             </TableRow>
@@ -340,11 +385,11 @@ function ContractManagement() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">Cargando...</TableCell>
+                <TableCell colSpan={8} align="center">Cargando...</TableCell>
               </TableRow>
             ) : filteredContracts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">No hay contratos disponibles</TableCell>
+                <TableCell colSpan={8} align="center">No hay contratos disponibles</TableCell>
               </TableRow>
             ) : (
               filteredContracts
@@ -358,6 +403,24 @@ function ContractManagement() {
                     <TableCell>
                       {formatDate(contract.validFrom)} 
                       {contract.validTo ? ` - ${formatDate(contract.validTo)}` : ' - Indefinido'}
+                    </TableCell>
+                    <TableCell>
+                      {contract.tieneTecho ? (
+                        <Box>
+                          <Typography variant="body2" fontWeight="bold">
+                            ${contract.valorTecho?.toLocaleString() || '0'}
+                          </Typography>
+                          {contract.valorFacturado > 0 && (
+                            <Typography variant="caption" color="text.secondary">
+                              Facturado: ${contract.valorFacturado?.toLocaleString() || '0'}
+                            </Typography>
+                          )}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Sin techo
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Box sx={{ 
@@ -480,6 +543,79 @@ function ContractManagement() {
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }}>Configuración de Techo Presupuestal</Divider>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      name="tieneTecho"
+                      checked={currentContract.tieneTecho}
+                      onChange={handleTechoChange}
+                      color="primary"
+                    />
+                  }
+                  label="Este contrato tiene techo presupuestal"
+                />
+              </Grid>
+              
+              {currentContract.tieneTecho && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      name="valorTecho"
+                      label="Valor del Techo"
+                      type="number"
+                      fullWidth
+                      value={currentContract.valorTecho}
+                      onChange={handleTechoChange}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">$</InputAdornment>
+                      }}
+                      helperText="Valor máximo que se puede facturar en este contrato"
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      name="alertas.porcentajeAlerta"
+                      label="Porcentaje de Alerta"
+                      type="number"
+                      fullWidth
+                      value={currentContract.alertas?.porcentajeAlerta || 80}
+                      onChange={handleTechoChange}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                        inputProps: { min: 0, max: 100 }
+                      }}
+                      helperText="Se generará una alerta al alcanzar este porcentaje"
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      name="alertas.porcentajeCritico"
+                      label="Porcentaje Crítico"
+                      type="number"
+                      fullWidth
+                      value={currentContract.alertas?.porcentajeCritico || 90}
+                      onChange={handleTechoChange}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                        inputProps: { min: 0, max: 100 }
+                      }}
+                      helperText="Se generará una alerta crítica al alcanzar este porcentaje"
+                    />
+                  </Grid>
+                </>
+              )}
+              
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }}>Estado del Contrato</Divider>
+              </Grid>
+              
               <Grid item xs={12}>
                 <FormControlLabel
                   control={

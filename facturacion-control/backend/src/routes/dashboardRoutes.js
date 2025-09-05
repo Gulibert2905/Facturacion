@@ -23,6 +23,11 @@ router.get('/recent-services',
 );
 
 // Nuevas rutas para funcionalidades avanzadas
+router.get('/advanced', 
+  requirePermission(MODULES.DASHBOARD, ACTIONS.READ),
+  getDashboardStatsAdvanced
+);
+
 router.get('/stats/advanced', 
   requirePermission(MODULES.DASHBOARD, ACTIONS.READ),
   getDashboardStatsAdvanced

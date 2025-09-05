@@ -1,19 +1,21 @@
 const mongoose = require('mongoose');
 
 const companySchema = new mongoose.Schema({
-  name: String,
+  nombre: String,
   nit: String,
-  code: String,
-  status: {
+  codigo: String,
+  estado: {
     type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
+    enum: ['activo', 'inactivo'],
+    default: 'activo'
   },
-  billingConfigs: {
-    prefixes: [String],
-    costCenter: String,
-    defaultBranch: String
+  configuracionFacturacion: {
+    prefijos: [String],
+    centroCosto: String,
+    sucursalPorDefecto: String
   }
+}, {
+  timestamps: true
 });
 
 module.exports = mongoose.model('Company', companySchema);

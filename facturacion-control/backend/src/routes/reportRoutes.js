@@ -1,6 +1,8 @@
 // src/routes/reportRoutes.js
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
+const { companyAccessMiddleware } = require('../middleware/companyAccess');
 const { 
   generateReport, 
   exportReport, 
@@ -13,6 +15,10 @@ const {
   updateExportTemplate,
   
 } = require('../controllers/reportController');
+
+// Todas las rutas requieren autenticación y filtrado por empresa
+router.use(protect);
+router.use(companyAccessMiddleware);
 
 // Rutas para reportes
 router.post('/generate', generateReport);

@@ -148,15 +148,30 @@ function CupsManagement() {
   };
   
   const handleDeleteService = async (cupsCode) => {
-    if (window.confirm(`¿Estás seguro de eliminar el servicio ${cupsCode}?`)) {
+    if (window.confirm(`¿Estás seguro de eliminar el servicio ${cupsCode}? Esta acción no se puede deshacer.`)) {
       try {
+        const token = secureStorage.getItem('token');
         const response = await fetch(`http://localhost:5000/api/cups/${cupsCode}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
         });
         
         if (response.ok) {
-          showAlert('Servicio eliminado', 'success');
-          fetchServices(); // Recargar la lista
+          const result = await response.json();
+          
+          // Si se eliminó físicamente, actualizar la lista inmediatamente
+          if (result.deleted) {
+            setServices(prev => prev.filter(service => service.cupsCode !== cupsCode));
+            setFilteredServices(prev => prev.filter(service => service.cupsCode !== cupsCode));
+          } else {
+            // Si solo se marcó como inactivo, recargar la lista
+            fetchServices();
+          }
+          
+          showAlert(result.message || 'Servicio eliminado', 'success');
         } else {
           const error = await response.json();
           showAlert(error.message || 'Error al eliminar', 'error');

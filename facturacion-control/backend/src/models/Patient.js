@@ -2,48 +2,48 @@ const mongoose = require('mongoose');
 
 const patientSchema = new mongoose.Schema({
     // Campos obligatorios
-    documentType: {
+    tipoDocumento: {
         type: String,
         required: true,
         enum: ['CC', 'TI', 'CE', 'RC','PT','PA']  // Validación de tipos de documento permitidos
     },
-    documentNumber: {
+    numeroDocumento: {
         type: String,
         required: true,
         unique: true  // Asegura que no haya duplicados
     },
-    firstName: {
+    primerNombre: {
         type: String,
         required: true
     },
-    firstLastName: {
+    primerApellido: {
         type: String,
         required: true
     },
 
     // Campos opcionales
-    secondName: {
+    segundoNombre: {
         type: String,
         default: ''  // Valor por defecto para campo opcional
     },
-    secondLastName: {
+    segundoApellido: {
         type: String,
         default: ''
     },
-    birthDate: {
+    fechaNacimiento: {
         type: Date,
         default: null
     },
-    gender: {
+    genero: {
         type: String,
         enum: ['M', 'F', 'Masculino','Femenino','' ],  // Incluimos cadena vacía como valor válido
         default: ''
     },
-    municipality: {
+    municipio: {
         type: String,
         default: ''
     },
-    department: {
+    departamento: {
         type: String,
         default: ''
     },
@@ -56,27 +56,27 @@ const patientSchema = new mongoose.Schema({
         default: ''
     },
     ciudadNacimiento: String,
-ciudadExpedicion: String,
-    zone: {
+    ciudadExpedicion: String,
+    zona: {
         type: String,
         default: 'U'
     },
-    active: {
+    activo: {
         type: Boolean,
         default: true
     },
-    fullName: {
+    nombreCompleto: {
         type: String
     }
 }, {
     timestamps: true
 });
 
-// Middleware para generar fullName automáticamente
+// Middleware para generar nombreCompleto automáticamente
 patientSchema.pre('save', function(next) {
-    const names = [this.firstName, this.secondName].filter(Boolean);
-    const lastNames = [this.firstLastName, this.secondLastName].filter(Boolean);
-    this.fullName = [...names, ...lastNames].join(' ');
+    const nombres = [this.primerNombre, this.segundoNombre].filter(Boolean);
+    const apellidos = [this.primerApellido, this.segundoApellido].filter(Boolean);
+    this.nombreCompleto = [...nombres, ...apellidos].join(' ');
     next();
 });
 

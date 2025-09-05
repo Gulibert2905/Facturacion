@@ -38,7 +38,8 @@ import {
   Settings as SettingsIcon,
   Security as SecurityIcon,
   Group as GroupIcon,
-  Assessment as StatsIcon
+  Assessment as StatsIcon,
+  Launch as LaunchIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import authService from '../components/services/authService';
@@ -56,7 +57,7 @@ const SuperAdminPanel = () => {
     email: '',
     fullName: '',
     password: '',
-    role: 'user'
+    role: 'facturador'
   });
   const { user } = useAuth();
 
@@ -103,12 +104,12 @@ const SuperAdminPanel = () => {
 
   const handleCreateUser = async () => {
     try {
-      if (!newUser.username || !newUser.password || !newUser.fullName) {
+      if (!newUser.username || !newUser.password || !newUser.fullName || !newUser.email) {
         showMessage('Todos los campos son requeridos', 'error');
         return;
       }
 
-      const response = await authService.post('/auth/register', newUser);
+      const response = await authService.post('/users', newUser);
 
       if (response.success) {
         showMessage('Usuario creado exitosamente', 'success');
@@ -118,7 +119,7 @@ const SuperAdminPanel = () => {
           email: '',
           fullName: '',
           password: '',
-          role: 'user'
+          role: 'facturador'
         });
         loadData();
       }
@@ -204,6 +205,20 @@ const SuperAdminPanel = () => {
 
         {/* Panel de Gestión de Usuarios */}
         <div hidden={currentTab !== 0}>
+          {/* Aviso sobre gestión avanzada de usuarios */}
+          <Alert 
+            severity="info" 
+            action={
+              <Button color="inherit" size="small" endIcon={<LaunchIcon />} 
+                onClick={() => window.location.href = '/users'}>
+                Ir al Módulo Avanzado
+              </Button>
+            }
+            sx={{ mb: 2 }}
+          >
+            Para gestión avanzada de usuarios con asignación de empresas, usa el <strong>Módulo de Gestión de Usuarios</strong>
+          </Alert>
+
           <Grid container spacing={3}>
             <Grid item xs={12} md={8}>
               <Card>
@@ -380,7 +395,7 @@ const SuperAdminPanel = () => {
           />
           <TextField
             margin="dense"
-            label="Email (opcional)"
+            label="Email"
             type="email"
             fullWidth
             variant="outlined"

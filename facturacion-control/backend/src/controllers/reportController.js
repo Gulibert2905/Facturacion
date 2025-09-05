@@ -10,7 +10,8 @@ const generateReport = async (req, res) => {
     const { filters, columns } = req.body;
     console.log('🔍 Filtros recibidos en backend:', JSON.stringify(filters, null, 2));
     
-    let query = {};
+    // Usar el filtro de empresa desde el middleware
+    let query = req.createCompanyFilter ? req.createCompanyFilter() : {};
     
     // Validar y procesar filtros de fecha
     if (filters.startDate && filters.endDate) {
@@ -190,6 +191,9 @@ const generateReport = async (req, res) => {
 const exportReport = async (req, res) => {
   try {
     const { filters, columns, data } = req.body;
+    
+    // Nota: Los datos ya vienen filtrados por empresa desde generateReport
+    // pero si se necesita re-filtrar aquí, usar req.createCompanyFilter()
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte');
 
