@@ -1,5 +1,5 @@
 // src/components/PatientForm.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -11,13 +11,23 @@ import {
   Select,
   MenuItem,
   Alert,
-  Snackbar
+  Snackbar,
+  Typography
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { validationService } from './services/validationService';
+import { 
+  documentTypes, 
+  calculateAge, 
+  getRecommendedDocumentType,
+  validateDocumentTypeForAge,
+  validateDocumentNumber,
+  formatDocumentType
+} from '../utils/documentValidation';
 
 function PatientForm({ initialData, onSubmit }) {
-  const [formData, setFormData] = useState(initialData || {
+  const [formData, setFormData] = useState({
     documentType: '',
     documentNumber: '',
     firstName: '',
@@ -30,11 +40,36 @@ function PatientForm({ initialData, onSubmit }) {
     department: '',
     regimen: '',
     eps: '',
-    zone: 'U'
+    zone: 'U',
+    ...initialData
   });
 
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [suggestedDocType, setSuggestedDocType] = useState('');
+  const [documentValidation, setDocumentValidation] = useState({ isValid: true, message: '', severity: 'info' });
+  const [numberValidation, setNumberValidation] = useState({ isValid: true, message: '', severity: 'info' });
+
+  // Validar documento en tiempo real
+  const validateDocumentInRealTime = () => {
+    if (formData.birthDate && formData.documentType) {
+      const age = calculateAge(formData.birthDate);
+      const validation = validateDocumentTypeForAge(formData.documentType, age);
+      setDocumentValidation(validation);
+    }
+    
+    if (formData.documentNumber && formData.documentType) {
+      const numValidation = validateDocumentNumber(formData.documentNumber, formData.documentType);
+      setNumberValidation(numValidation);
+    }
+  };
+
+  const validateForm = () => {
+    const validation = validationService.validatePatient(formData);
+    setValidationErrors(validation.errors);
+    return validation.isValid;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,19 +77,90 @@ function PatientForm({ initialData, onSubmit }) {
       ...prev,
       [name]: value
     }));
+    
+    // Limpiar errores de validación cuando el usuario empiece a escribir
+    if (validationErrors.length > 0) {
+      setTimeout(validateForm, 500);
+    }
+  };
+
+  const handleDateChange = (date) => {
+    setFormData(prev => ({ ...prev, birthDate: date }));
+    
+    if (date) {
+      const age = calculateAge(date);
+      const suggested = getRecommendedDocumentType(age);
+      setSuggestedDocType(suggested);
+      
+      // Si el tipo de documento actual no es apropiado para la edad, mostrar validación
+      if (suggested && formData.documentType) {
+        const validation = validateDocumentTypeForAge(formData.documentType, age);
+        setDocumentValidation(validation);
+        
+        if (!validation.isValid) {
+          setAlertMessage(`${validation.message}`);
+          setShowAlert(true);
+        }
+      }
+    } else {
+      setSuggestedDocType('');
+      setDocumentValidation({ isValid: true, message: '', severity: 'info' });
+    }
+    
+    if (validationErrors.length > 0) {
+      setTimeout(validateForm, 500);
+    }
+  };
+
+  // Manejar cambio de tipo de documento
+  const handleDocumentTypeChange = (e) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, documentType: value }));
+    
+    // Validar inmediatamente si hay fecha de nacimiento
+    if (formData.birthDate) {
+      const age = calculateAge(formData.birthDate);
+      const validation = validateDocumentTypeForAge(value, age);
+      setDocumentValidation(validation);
+    }
+    
+    // Validar número de documento si existe
+    if (formData.documentNumber) {
+      const numValidation = validateDocumentNumber(formData.documentNumber, value);
+      setNumberValidation(numValidation);
+    }
+    
+    if (validationErrors.length > 0) {
+      setTimeout(validateForm, 500);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      setAlertMessage('Por favor corrija los errores de validación antes de continuar');
+      setShowAlert(true);
+      return;
+    }
+    
     try {
       await onSubmit(formData);
       setAlertMessage('Paciente guardado exitosamente');
       setShowAlert(true);
+      setValidationErrors([]);
     } catch (error) {
       setAlertMessage('Error al guardar paciente');
       setShowAlert(true);
     }
   };
+
+  useEffect(() => {
+    validateDocumentInRealTime();
+    if (formData.birthDate && formData.documentType) {
+      validateForm();
+    }
+  }, [formData.birthDate, formData.documentType, formData.documentNumber]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -66,15 +172,34 @@ function PatientForm({ initialData, onSubmit }) {
                 <InputLabel>Tipo de Documento</InputLabel>
                 <Select
                   name="documentType"
-                  value={formData.documentType}
-                  onChange={handleChange}
+                  value={formData.documentType || ''}
+                  onChange={handleDocumentTypeChange}
                   required
+                  error={!documentValidation.isValid}
                 >
-                  <MenuItem value="CC">Cédula de Ciudadanía</MenuItem>
-                  <MenuItem value="TI">Tarjeta de Identidad</MenuItem>
-                  <MenuItem value="CE">Cédula de Extranjería</MenuItem>
-                  <MenuItem value="PA">Pasaporte</MenuItem>
+                  {documentTypes.map(option => (
+                    <MenuItem 
+                      key={option.value} 
+                      value={option.value}
+                      sx={{
+                        backgroundColor: suggestedDocType === option.value ? 'success.light' : 'inherit',
+                        color: suggestedDocType === option.value ? 'success.contrastText' : 'inherit'
+                      }}
+                    >
+                      {option.label}
+                      {suggestedDocType === option.value && ' ⭐ (Recomendado)'}
+                    </MenuItem>
+                  ))}
                 </Select>
+                {formData.birthDate && documentValidation.message && (
+                  <Typography 
+                    variant="caption" 
+                    color={documentValidation.severity === 'error' ? 'error.main' : 'success.main'} 
+                    sx={{ mt: 0.5, display: 'block' }}
+                  >
+                    {documentValidation.message}
+                  </Typography>
+                )}
               </FormControl>
             </Grid>
 
@@ -84,8 +209,31 @@ function PatientForm({ initialData, onSubmit }) {
                 label="Número de Documento"
                 name="documentNumber"
                 value={formData.documentNumber}
-                onChange={handleChange}
+                onChange={(e) => {
+                  // Solo permitir números
+                  const value = e.target.value.replace(/\D/g, '');
+                  if (value.length <= 15) { // Máximo 15 dígitos
+                    setFormData(prev => ({ ...prev, documentNumber: value }));
+                    
+                    // Validar en tiempo real
+                    if (formData.documentType) {
+                      const validation = validateDocumentNumber(value, formData.documentType);
+                      setNumberValidation(validation);
+                    }
+                  }
+                  
+                  if (validationErrors.length > 0) {
+                    setTimeout(validateForm, 500);
+                  }
+                }}
                 required
+                error={!numberValidation.isValid}
+                helperText={numberValidation.message || `Solo números (${formData.documentNumber?.length || 0}/15)`}
+                inputProps={{
+                  inputMode: 'numeric',
+                  pattern: '[0-9]*',
+                  maxLength: 15
+                }}
               />
             </Grid>
 
@@ -94,7 +242,7 @@ function PatientForm({ initialData, onSubmit }) {
                 <InputLabel>Género</InputLabel>
                 <Select
                   name="gender"
-                  value={formData.gender}
+                  value={formData.gender || ''}
                   onChange={handleChange}
                   required
                 >
@@ -150,8 +298,15 @@ function PatientForm({ initialData, onSubmit }) {
               <DatePicker
                 label="Fecha de Nacimiento"
                 value={formData.birthDate}
-                onChange={(date) => setFormData(prev => ({ ...prev, birthDate: date }))}
-                renderInput={(params) => <TextField {...params} fullWidth />}
+                onChange={handleDateChange}
+                renderInput={(params) => 
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    error={validationErrors.some(error => error.includes('nacimiento'))}
+                    helperText={formData.birthDate ? `Edad: ${calculateAge(formData.birthDate)} años` : ''}
+                  />
+                }
               />
             </Grid>
 
@@ -160,7 +315,7 @@ function PatientForm({ initialData, onSubmit }) {
                 <InputLabel>Régimen</InputLabel>
                 <Select
                   name="regimen"
-                  value={formData.regimen}
+                  value={formData.regimen || ''}
                   onChange={handleChange}
                   required
                 >
@@ -200,12 +355,28 @@ function PatientForm({ initialData, onSubmit }) {
               />
             </Grid>
 
+            {validationErrors.length > 0 && (
+              <Grid item xs={12}>
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Errores de validación:
+                  </Typography>
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {validationErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              </Grid>
+            )}
+            
             <Grid item xs={12}>
               <Button
                 type="submit"
                 variant="contained"
                 color="primary"
                 sx={{ mt: 2 }}
+                disabled={validationErrors.length > 0}
               >
                 {initialData ? 'Actualizar' : 'Crear'} Paciente
               </Button>

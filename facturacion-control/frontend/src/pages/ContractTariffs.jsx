@@ -30,7 +30,7 @@ import {
   Checkbox,
   FormControlLabel
 } from '@mui/material';
-import { Search, Edit, CloudUpload, SaveAlt } from '@mui/icons-material';
+import { Search, Edit, CloudUpload, ToggleOff, ToggleOn, Delete, GetApp, Add } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 
 function ContractTariffs() {
@@ -62,6 +62,7 @@ function ContractTariffs() {
   // Estado para diálogo de importación
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [previewData, setPreviewData] = useState([]);
+  const [fullImportData, setFullImportData] = useState([]);
   
   // Definir funciones con useCallback para usarlas en dependencias
   const showAlert = useCallback((message, severity = 'info') => {
@@ -101,52 +102,17 @@ function ContractTariffs() {
   const fetchServicesByContract = useCallback(async (contractId) => {
     setLoading(true);
     try {
-      // Primero, obtenemos todos los servicios
       const token = secureStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/cups', {
+      // Usar el nuevo endpoint optimizado que devuelve todos los servicios con sus tarifas
+      const response = await fetch(`http://localhost:5000/api/cups/contract/${contractId}/services-with-tariffs`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token && { 'Authorization': `Bearer ${token}` })
         }
       });
+      
       if (response.ok) {
-        const allServices = await response.json();
-        
-        // Para cada servicio, verificamos si tiene tarifa para este contrato
-        const servicesWithTariffs = await Promise.all(allServices.map(async (service) => {
-          try {
-            const tariffResponse = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${contractId}`, {
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` })
-              }
-            });
-            if (tariffResponse.ok) {
-              const tariffData = await tariffResponse.json();
-              return {
-                ...service,
-                value: tariffData.value,
-                requiresAuthorization: tariffData.requiresAuthorization,
-                hasTariff: true
-              };
-            } else {
-              return {
-                ...service,
-                value: 0,
-                requiresAuthorization: false,
-                hasTariff: false
-              };
-            }
-          } catch (error) {
-            return {
-              ...service,
-              value: 0,
-              requiresAuthorization: false,
-              hasTariff: false
-            };
-          }
-        }));
-        
+        const servicesWithTariffs = await response.json();
         setServices(servicesWithTariffs);
         setFilteredServices(servicesWithTariffs);
       } else {
@@ -209,10 +175,21 @@ function ContractTariffs() {
   
   const handleOpenDialog = (service) => {
     setCurrentTariff({
-      cupsCode: service.cupsCode,
-      description: service.description,
-      value: service.value || 0,
-      requiresAuthorization: service.requiresAuthorization || false
+      cupsCode: service ? service.cupsCode : '',
+      description: service ? service.description : '',
+      value: service ? service.value || 0 : 0,
+      requiresAuthorization: service ? service.requiresAuthorization || false : false
+    });
+    setOpenDialog(true);
+  };
+
+  // Abrir diálogo para agregar nuevo servicio
+  const handleAddNewService = () => {
+    setCurrentTariff({
+      cupsCode: '',
+      description: '',
+      value: 0,
+      requiresAuthorization: false
     });
     setOpenDialog(true);
   };
@@ -232,6 +209,14 @@ function ContractTariffs() {
   const handleSaveTariff = async () => {
     try {
       // Validar campos obligatorios
+      if (!currentTariff.cupsCode.trim()) {
+        showAlert('El código CUPS es obligatorio', 'error');
+        return;
+      }
+      if (!currentTariff.description.trim()) {
+        showAlert('La descripción es obligatoria', 'error');
+        return;
+      }
       if (currentTariff.value <= 0) {
         showAlert('El valor debe ser mayor que cero', 'error');
         return;
@@ -243,14 +228,18 @@ function ContractTariffs() {
         body: JSON.stringify({
           contractId: selectedContract,
           value: parseFloat(currentTariff.value),
-          requiresAuthorization: currentTariff.requiresAuthorization
+          requiresAuthorization: currentTariff.requiresAuthorization,
+          description: currentTariff.description
         })
       });
       
       if (response.ok) {
         showAlert('Tarifa guardada correctamente', 'success');
-        fetchServicesByContract(selectedContract); // Recargar la lista
         handleCloseDialog();
+        // Delay antes de recargar para asegurar que el servidor procesó el guardado
+        setTimeout(() => {
+          fetchServicesByContract(selectedContract); // Recargar la lista
+        }, 500);
       } else {
         const error = await response.json();
         showAlert(error.message || 'Error al guardar tarifa', 'error');
@@ -285,7 +274,9 @@ function ContractTariffs() {
           return;
         }
         
-        setPreviewData(data.slice(0, 5)); // Mostrar los primeros 5 registros
+        console.log('📁 Datos completos del archivo:', data);
+        setPreviewData(data.slice(0, 5)); // Mostrar los primeros 5 registros para vista previa
+        setFullImportData(data); // Guardar todos los datos para importar
         setOpenImportDialog(true);
       } catch (error) {
         console.error('Error procesando archivo:', error);
@@ -303,17 +294,24 @@ function ContractTariffs() {
     }
     
     try {
+      console.log('📤 Enviando datos de importación completos:', fullImportData);
+      console.log('📤 Cantidad de registros a importar:', fullImportData.length);
+      console.log('📤 Contrato seleccionado:', selectedContract);
+      
       const response = await fetch(`http://localhost:5000/api/cups/contract/${selectedContract}/import-tariffs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tariffs: previewData })
+        body: JSON.stringify({ tariffs: fullImportData })
       });
       
       if (response.ok) {
         const result = await response.json();
         showAlert(result.message, 'success');
-        fetchServicesByContract(selectedContract); // Recargar la lista
         setOpenImportDialog(false);
+        // Delay antes de recargar para asegurar que el servidor procesó todas las importaciones
+        setTimeout(() => {
+          fetchServicesByContract(selectedContract); // Recargar la lista
+        }, 1000);
       } else {
         const error = await response.json();
         showAlert(error.message || 'Error en la importación', 'error');
@@ -324,44 +322,102 @@ function ContractTariffs() {
     }
   };
   
-  const exportTariffsToExcel = () => {
-    if (!selectedContract || services.length === 0) {
-      showAlert('No hay datos para exportar', 'error');
-      return;
-    }
-    
+  // Descargar plantilla de importación de tarifas
+  const downloadTariffTemplate = () => {
     try {
-      // Formatear datos para exportación
-      const exportData = services.map(service => ({
-        cupsCode: service.cupsCode,
-        description: service.description,
-        value: service.value || 0,
-        requiresAuthorization: service.requiresAuthorization ? 'Sí' : 'No'
-      }));
+      // Crear datos de ejemplo para la plantilla incluyendo descripción
+      const templateData = [
+        {
+          cupsCode: '890201',
+          description: 'Consulta de primera vez por medicina general',
+          value: 50000,
+          requiresAuthorization: false
+        },
+        {
+          cupsCode: '890301',
+          description: 'Consulta de primera vez por medicina especializada',
+          value: 75000,
+          requiresAuthorization: true
+        },
+        {
+          cupsCode: '898001',
+          description: 'Procedimiento diagnóstico especializado',
+          value: 120000,
+          requiresAuthorization: false
+        }
+      ];
       
       // Crear libro y hoja
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(exportData);
+      const ws = XLSX.utils.json_to_sheet(templateData);
       
       // Añadir hoja al libro
-      XLSX.utils.book_append_sheet(wb, ws, "Tarifas");
-      
-      // Obtener nombre del contrato seleccionado
-      const contract = contracts.find(c => c._id === selectedContract);
-      const contractName = contract ? contract.name : 'contrato';
+      XLSX.utils.book_append_sheet(wb, ws, "Plantilla Tarifas");
       
       // Generar archivo y descargar
-      XLSX.writeFile(wb, `tarifas_${contractName}.xlsx`);
+      XLSX.writeFile(wb, 'plantilla_importacion_tarifas.xlsx');
       
-      showAlert('Tarifas exportadas correctamente', 'success');
+      showAlert('Plantilla descargada correctamente', 'success');
     } catch (error) {
-      console.error('Error exportando tarifas:', error);
-      showAlert('Error al exportar tarifas', 'error');
+      console.error('Error descargando plantilla:', error);
+      showAlert('Error al descargar plantilla', 'error');
     }
   };
   
   const handleCloseAlert = () => {
     setAlert({ ...alert, open: false });
+  };
+
+  // Activar/Desactivar tarifa
+  const handleToggleTariff = async (service, active) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${selectedContract}/toggle`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active })
+      });
+      
+      if (response.ok) {
+        showAlert(`Tarifa ${active ? 'activada' : 'desactivada'} correctamente`, 'success');
+        // Pequeño delay antes de recargar para asegurar que el servidor procesó el cambio
+        setTimeout(() => {
+          fetchServicesByContract(selectedContract); // Recargar la lista
+        }, 500);
+      } else {
+        const error = await response.json();
+        showAlert(error.message || 'Error al cambiar estado de tarifa', 'error');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showAlert('Error de conexión', 'error');
+    }
+  };
+
+  // Eliminar tarifa
+  const handleDeleteTariff = async (service) => {
+    if (!window.confirm(`¿Está seguro de eliminar la tarifa para el servicio ${service.cupsCode}?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/cups/${service.cupsCode}/tariff/${selectedContract}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        showAlert('Tarifa eliminada correctamente', 'success');
+        // Pequeño delay antes de recargar para asegurar que el servidor procesó la eliminación
+        setTimeout(() => {
+          fetchServicesByContract(selectedContract); // Recargar la lista
+        }, 500);
+      } else {
+        const error = await response.json();
+        showAlert(error.message || 'Error al eliminar tarifa', 'error');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showAlert('Error de conexión', 'error');
+    }
   };
 
   return (
@@ -416,26 +472,27 @@ function ContractTariffs() {
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
                 variant="outlined"
+                startIcon={<GetApp />}
+                onClick={downloadTariffTemplate}
+                size="small"
+              >
+                Descargar Plantilla
+              </Button>
+              
+              <Button
+                variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
                 disabled={!selectedContract}
+                size="small"
               >
-                Importar
+                Importar Tarifas
                 <input
                   type="file"
                   hidden
                   accept=".xlsx,.xls"
                   onChange={handleFileUpload}
                 />
-              </Button>
-              
-              <Button
-                variant="outlined"
-                startIcon={<SaveAlt />}
-                onClick={exportTariffsToExcel}
-                disabled={!selectedContract || services.length === 0}
-              >
-                Exportar
               </Button>
             </Box>
           </Grid>
@@ -444,7 +501,7 @@ function ContractTariffs() {
       
       {selectedContract && (
         <>
-          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <TextField
               placeholder="Buscar por código o descripción"
               variant="outlined"
@@ -460,6 +517,16 @@ function ContractTariffs() {
               }}
               sx={{ width: 300 }}
             />
+            
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleAddNewService}
+              size="small"
+              disabled={!selectedContract}
+            >
+              Agregar Servicio
+            </Button>
           </Box>
           
           <TableContainer component={Paper}>
@@ -481,7 +548,24 @@ function ContractTariffs() {
                   </TableRow>
                 ) : filteredServices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">No hay servicios disponibles</TableCell>
+                    <TableCell colSpan={6} align="center">
+                      <Box sx={{ py: 4 }}>
+                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                          No hay servicios CUPS asignados a este contrato
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          Los servicios se crearán automáticamente cuando importes tarifas o agregues servicios manualmente
+                        </Typography>
+                        <Button 
+                          variant="outlined" 
+                          startIcon={<GetApp />}
+                          onClick={downloadTariffTemplate}
+                          size="small"
+                        >
+                          Descargar Plantilla para Empezar
+                        </Button>
+                      </Box>
+                    </TableCell>
                   </TableRow>
                 ) : (
                   filteredServices
@@ -502,16 +586,29 @@ function ContractTariffs() {
                         </TableCell>
                         <TableCell>
                           {service.hasTariff ? (
-                            <Box sx={{ 
-                              display: 'inline-block', 
-                              px: 1, 
-                              py: 0.5, 
-                              borderRadius: 1, 
-                              bgcolor: 'success.light',
-                              color: 'success.contrastText' 
-                            }}>
-                              Asignado
-                            </Box>
+                            service.active ? (
+                              <Box sx={{ 
+                                display: 'inline-block', 
+                                px: 1, 
+                                py: 0.5, 
+                                borderRadius: 1, 
+                                bgcolor: 'success.light',
+                                color: 'success.contrastText' 
+                              }}>
+                                Activo
+                              </Box>
+                            ) : (
+                              <Box sx={{ 
+                                display: 'inline-block', 
+                                px: 1, 
+                                py: 0.5, 
+                                borderRadius: 1, 
+                                bgcolor: 'error.light',
+                                color: 'error.contrastText' 
+                              }}>
+                                Inactivo
+                              </Box>
+                            )
                           ) : (
                             <Box sx={{ 
                               display: 'inline-block', 
@@ -526,13 +623,37 @@ function ContractTariffs() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <IconButton 
-                            size="small" 
-                            onClick={() => handleOpenDialog(service)}
-                            title="Editar tarifa"
-                          >
-                            <Edit />
-                          </IconButton>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleOpenDialog(service)}
+                              title="Editar tarifa"
+                            >
+                              <Edit />
+                            </IconButton>
+                            
+                            {service.hasTariff && service.value > 0 && (
+                              <>
+                                <IconButton 
+                                  size="small" 
+                                  onClick={() => handleToggleTariff(service, !service.active)}
+                                  title={service.active ? "Desactivar tarifa" : "Activar tarifa"}
+                                  color={service.active ? "warning" : "success"}
+                                >
+                                  {service.active ? <ToggleOff /> : <ToggleOn />}
+                                </IconButton>
+                                
+                                <IconButton 
+                                  size="small" 
+                                  onClick={() => handleDeleteTariff(service)}
+                                  title="Eliminar tarifa"
+                                  color="error"
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </>
+                            )}
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))
@@ -556,26 +677,31 @@ function ContractTariffs() {
       {/* Diálogo para editar tarifa */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          Asignar tarifa para {currentTariff.cupsCode}
+          {currentTariff.cupsCode ? `Editar tarifa para ${currentTariff.cupsCode}` : 'Agregar nuevo servicio'}
         </DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
               <TextField
+                name="cupsCode"
                 label="Código CUPS"
                 fullWidth
                 value={currentTariff.cupsCode}
-                disabled
+                onChange={handleInputChange}
+                disabled={!!currentTariff.cupsCode} // Solo editable cuando es nuevo
+                required
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
+                name="description"
                 label="Descripción"
                 fullWidth
                 value={currentTariff.description}
-                disabled
+                onChange={handleInputChange}
                 multiline
                 rows={2}
+                required
               />
             </Grid>
             <Grid item xs={12}>
@@ -619,7 +745,7 @@ function ContractTariffs() {
           {previewData.length > 0 && (
             <>
               <Typography variant="subtitle1" gutterBottom>
-                Se importarán {previewData.length} tarifas para el contrato seleccionado. Vista previa:
+                Se importarán {fullImportData.length} tarifas para el contrato seleccionado. Vista previa de los primeros 5:
               </Typography>
               
               <TableContainer>

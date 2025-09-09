@@ -138,12 +138,26 @@ const deleteService = async (req, res) => {
 const assignTariff = async (req, res) => {
   try {
     const { cupsCode } = req.params;
-    const { contractId, value, requiresAuthorization } = req.body;
+    const { contractId, value, requiresAuthorization, description } = req.body;
     
-    // Verificar si el servicio existe
-    const service = await Service.findOne({ cupsCode });
+    // Verificar si el servicio existe, si no crearlo dinámicamente
+    let service = await Service.findOne({ cupsCode });
     if (!service) {
-      return res.status(404).json({ message: 'Servicio no encontrado' });
+      // Crear el servicio dinámicamente en el catálogo
+      try {
+        service = await Service.create({
+          cupsCode,
+          description: description || `Servicio ${cupsCode}`,
+          category: 'MEDICINA',
+          status: 'active',
+          contracts: []
+        });
+        console.log(`Servicio ${cupsCode} creado dinámicamente`);
+      } catch (createError) {
+        return res.status(400).json({ 
+          message: `Error creando servicio: ${createError.message}` 
+        });
+      }
     }
     
     // Verificar si el contrato existe
@@ -161,12 +175,17 @@ const assignTariff = async (req, res) => {
       // Actualizar la tarifa existente
       service.contracts[existingTariffIndex].value = value;
       service.contracts[existingTariffIndex].requiresAuthorization = requiresAuthorization || false;
+      // Mantener el estado actual si ya existe
+      if (service.contracts[existingTariffIndex].active === undefined) {
+        service.contracts[existingTariffIndex].active = true;
+      }
     } else {
       // Agregar nueva tarifa
       service.contracts.push({
         contractId,
         value,
-        requiresAuthorization: requiresAuthorization || false
+        requiresAuthorization: requiresAuthorization || false,
+        active: true
       });
     }
     
@@ -287,7 +306,8 @@ const getServiceTariff = async (req, res) => {
       cupsCode,
       description: service.description,
       value: tariff.value,
-      requiresAuthorization: tariff.requiresAuthorization || false
+      requiresAuthorization: tariff.requiresAuthorization || false,
+      active: tariff.active !== false // Por defecto true si no está especificado
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -312,11 +332,15 @@ const importTariffs = async (req, res) => {
       errors: []
     };
     
+    console.log(`Iniciando importación de ${tariffs.length} tarifas para contrato ${contractId}`);
+    
     for (const tariff of tariffs) {
       try {
-        const { cupsCode, value, requiresAuthorization } = tariff;
+        console.log(`Procesando tarifa:`, tariff);
+        const { cupsCode, value, requiresAuthorization, description } = tariff;
         
         if (!cupsCode || value === undefined) {
+          console.log(`Error de validación para tarifa:`, tariff);
           results.errors.push({
             cupsCode,
             error: 'Código CUPS y valor son obligatorios'
@@ -324,15 +348,30 @@ const importTariffs = async (req, res) => {
           continue;
         }
         
-        // Buscar el servicio
-        const service = await Service.findOne({ cupsCode });
+        // Buscar el servicio, si no existe lo creamos dinámicamente
+        let service = await Service.findOne({ cupsCode });
+        console.log(`Servicio ${cupsCode} ${service ? 'encontrado' : 'no encontrado'} en catálogo`);
         
         if (!service) {
-          results.errors.push({
-            cupsCode,
-            error: 'Servicio no encontrado'
-          });
-          continue;
+          // Crear el servicio dinámicamente en el catálogo
+          try {
+            console.log(`Creando servicio dinámicamente: ${cupsCode}`);
+            service = await Service.create({
+              cupsCode,
+              description: description || `Servicio ${cupsCode}`,
+              category: 'MEDICINA',
+              status: 'active',
+              contracts: []
+            });
+            console.log(`✅ Servicio ${cupsCode} creado exitosamente en el catálogo`);
+          } catch (createError) {
+            console.log(`❌ Error creando servicio ${cupsCode}:`, createError.message);
+            results.errors.push({
+              cupsCode,
+              error: `Error creando servicio: ${createError.message}`
+            });
+            continue;
+          }
         }
         
         // Verificar si ya existe la tarifa para este contrato
@@ -342,6 +381,7 @@ const importTariffs = async (req, res) => {
         
         if (existingTariffIndex >= 0) {
           // Actualizar tarifa existente
+          console.log(`Actualizando tarifa existente para ${cupsCode}`);
           service.contracts[existingTariffIndex].value = value;
           if (requiresAuthorization !== undefined) {
             service.contracts[existingTariffIndex].requiresAuthorization = requiresAuthorization;
@@ -349,16 +389,20 @@ const importTariffs = async (req, res) => {
           
           await service.save();
           results.updated++;
+          console.log(`✅ Tarifa actualizada para ${cupsCode}`);
         } else {
           // Agregar nueva tarifa
+          console.log(`Agregando nueva tarifa para ${cupsCode}`);
           service.contracts.push({
             contractId,
             value,
-            requiresAuthorization: requiresAuthorization || false
+            requiresAuthorization: requiresAuthorization || false,
+            active: true
           });
           
           await service.save();
           results.created++;
+          console.log(`✅ Nueva tarifa creada para ${cupsCode}`);
         }
       } catch (error) {
         results.errors.push({
@@ -377,6 +421,85 @@ const importTariffs = async (req, res) => {
   }
 };
 
+// Activar/Desactivar tarifa de un contrato específico
+const toggleTariffStatus = async (req, res) => {
+  try {
+    const { cupsCode, contractId } = req.params;
+    const { active } = req.body;
+    
+    const service = await Service.findOne({ cupsCode });
+    if (!service) {
+      return res.status(404).json({ message: 'Servicio no encontrado' });
+    }
+    
+    // Buscar la tarifa para el contrato específico
+    const tariffIndex = service.contracts.findIndex(
+      c => c.contractId && c.contractId.toString() === contractId
+    );
+    
+    if (tariffIndex === -1) {
+      return res.status(404).json({ 
+        message: 'No existe tarifa para este servicio en el contrato especificado' 
+      });
+    }
+    
+    // Cambiar el estado
+    service.contracts[tariffIndex].active = active;
+    await service.save();
+    
+    res.json({
+      message: `Tarifa ${active ? 'activada' : 'desactivada'} correctamente`,
+      cupsCode,
+      contractId,
+      active
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Obtener solo los servicios que tienen tarifas asignadas para un contrato específico
+const getServicesWithTariffs = async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    
+    // Verificar si el contrato existe
+    const contract = await Contract.findById(contractId);
+    if (!contract) {
+      return res.status(404).json({ message: 'Contrato no encontrado' });
+    }
+    
+    // Obtener solo los servicios que tienen tarifa para este contrato
+    const servicesWithTariffs = await Service.find({
+      status: 'active',
+      'contracts.contractId': contractId
+    });
+    
+    // Mapear servicios con sus tarifas para este contrato
+    const formattedServices = servicesWithTariffs.map(service => {
+      // Buscar la tarifa para este contrato
+      const tariff = service.contracts.find(
+        c => c.contractId && c.contractId.toString() === contractId
+      );
+      
+      return {
+        cupsCode: service.cupsCode,
+        description: service.description,
+        category: service.category,
+        // Datos de la tarifa
+        value: tariff ? tariff.value : 0,
+        requiresAuthorization: tariff ? tariff.requiresAuthorization : false,
+        active: tariff ? (tariff.active !== false) : true,
+        hasTariff: true // Todos tienen tarifa porque es el filtro de búsqueda
+      };
+    });
+    
+    res.json(formattedServices);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getServices,
   getServiceByCupsCode,
@@ -387,5 +510,7 @@ module.exports = {
   removeTariff,
   importServices,
   getServiceTariff,
-  importTariffs
+  importTariffs,
+  toggleTariffStatus,
+  getServicesWithTariffs
 };

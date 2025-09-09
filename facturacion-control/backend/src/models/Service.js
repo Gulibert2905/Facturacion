@@ -33,6 +33,10 @@ const serviceSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    active: {
+      type: Boolean,
+      default: true
+    },
     validFrom: {
       type: Date,
       default: Date.now

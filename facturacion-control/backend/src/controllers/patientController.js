@@ -27,7 +27,7 @@ const getCities = async (req, res) => {
 
 const getPatients = async (req, res) => {
     try {
-        const patients = await Patient.find({ active: true });
+        const patients = await Patient.find({ activo: true });
         res.json(patients);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -49,9 +49,9 @@ const getPatientByDocument = async (req, res) => {
 
         // Usar proyección para seleccionar solo los campos necesarios
         const patient = await Patient.findOne({ 
-            documentNumber,
-            active: true
-        }).select('documentType documentNumber firstName secondName firstLastName secondLastName fullName birthDate gender regimen municipality ciudadNacimiento ciudadExpedicion');
+            numeroDocumento: documentNumber,
+            activo: true
+        }).select('tipoDocumento numeroDocumento primerNombre segundoNombre primerApellido segundoApellido nombreCompleto fechaNacimiento genero regimen municipio ciudadNacimiento ciudadExpedicion');
 
         if (!patient) {
             return res.status(404).json({ 
@@ -92,7 +92,7 @@ const createPatient = async (req, res) => {
     try {
         // Verificar si ya existe
         const existingPatient = await Patient.findOne({
-            documentNumber: req.body.documentNumber
+            numeroDocumento: req.body.documentNumber
         });
 
         if (existingPatient) {
@@ -102,19 +102,19 @@ const createPatient = async (req, res) => {
         }
 
         const patientData = {
-            documentType: req.body.documentType,
-            documentNumber: req.body.documentNumber,
-            firstName: req.body.firstName,
-            secondName: req.body.secondName || '',
-            firstLastName: req.body.firstLastName,
-            secondLastName: req.body.secondLastName || '',
-            birthDate: req.body.birthDate,
-            gender: req.body.gender,
-            municipality: req.body.municipality,
-            department: req.body.department,
+            tipoDocumento: req.body.documentType,
+            numeroDocumento: req.body.documentNumber,
+            primerNombre: req.body.firstName,
+            segundoNombre: req.body.secondName || '',
+            primerApellido: req.body.firstLastName,
+            segundoApellido: req.body.secondLastName || '',
+            fechaNacimiento: req.body.birthDate,
+            genero: req.body.gender,
+            municipio: req.body.municipality,
+            departamento: req.body.department,
             regimen: req.body.regimen,
             eps: req.body.eps,
-            zone: req.body.zone || 'U'
+            zona: req.body.zone || 'U'
         };
 
         const patient = new Patient(patientData);

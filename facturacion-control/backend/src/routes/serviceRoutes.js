@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, requirePermission, MODULES, ACTIONS } = require('../middleware/auth');
 const { companyAccessMiddleware } = require('../middleware/companyAccess');
 const { validateServiceRecord } = require('../middleware/serviceValidation');
+const { validateServiceDiagnosis } = require('../middleware/diagnosisValidation');
 const { sanitizeInput, validateServiceData, validatePagination } = require('../middleware/validation');
 const { updateContractValues } = require('../controllers/contractController');
 
@@ -11,7 +12,8 @@ const {
   getServiceRecords,
   updateRecordStatus,
   getPatientServices,
-  assignContract
+  assignContract,
+  exportPrefacturacion
 } = require('../controllers/serviceController');
 
 // Todas las rutas requieren autenticación y filtrado por empresa
@@ -21,6 +23,7 @@ router.use(companyAccessMiddleware);
 // Aplicar middlewares en orden: validación -> crear servicio -> actualizar contrato
 router.post('/record', 
   requirePermission(MODULES.SERVICES, ACTIONS.CREATE),
+  validateServiceDiagnosis,
   validateServiceRecord, 
   createServiceRecordEnhanced, 
   updateContractValues
@@ -44,6 +47,11 @@ router.get('/patients/:documentNumber/services',
 router.patch('/services/:id/assign-contract', 
   requirePermission(MODULES.SERVICES, ACTIONS.UPDATE),
   assignContract
+);
+
+router.post('/export-prefacturacion', 
+  requirePermission(MODULES.SERVICES, ACTIONS.CREATE),
+  exportPrefacturacion
 );
 
 module.exports = router;

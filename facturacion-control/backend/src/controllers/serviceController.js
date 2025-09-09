@@ -292,11 +292,180 @@ const createServiceRecordEnhanced = async (req, res) => {
   }
 };
 
+const exportPrefacturacion = async (req, res) => {
+  try {
+    const {
+      services,
+      patient,
+      company,
+      contract,
+      totalServices,
+      totalValue
+    } = req.body;
+
+    if (!services || services.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No hay servicios para exportar'
+      });
+    }
+
+    if (!patient) {
+      return res.status(400).json({
+        success: false,
+        message: 'Información del paciente es requerida'
+      });
+    }
+
+    // Crear la prefacturación
+    const prefacturacion = new PreBill({
+      companyId: company,
+      contractId: contract,
+      patientId: patient._id,
+      patientData: {
+        documentNumber: patient.documentNumber,
+        documentType: patient.documentType,
+        firstName: patient.firstName,
+        secondName: patient.secondName,
+        firstLastName: patient.firstLastName,
+        secondLastName: patient.secondLastName,
+        birthDate: patient.birthDate,
+        gender: patient.gender,
+        eps: patient.eps,
+        department: patient.department,
+        municipality: patient.municipality,
+        zone: patient.zone
+      },
+      services: services.map(service => ({
+        serviceId: service._id,
+        cupsCode: service.cupsCode,
+        description: service.description,
+        serviceDate: service.serviceDate,
+        value: service.value,
+        authorization: service.authorization || '',
+        diagnosis: service.diagnosis || ''
+      })),
+      totalValue: totalValue,
+      status: 'parcial'
+    });
+
+    await prefacturacion.save();
+
+    // Marcar los servicios como prefacturados
+    const serviceIds = services.map(service => service._id);
+    await ServiceRecord.updateMany(
+      { _id: { $in: serviceIds } },
+      { 
+        status: 'prefacturado',
+        preBillId: prefacturacion._id,
+        updatedAt: new Date()
+      }
+    );
+
+    // Generar Excel inmediatamente
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Prefacturación');
+
+    // Definir las columnas según la estructura requerida
+    worksheet.columns = [
+      { header: 'N DOCUMENTO', key: 'documentNumber', width: 15 },
+      { header: 'TIPDOC', key: 'documentType', width: 10 },
+      { header: 'PRINOM', key: 'firstName', width: 15 },
+      { header: 'SEGNOM', key: 'secondName', width: 15 },
+      { header: 'PRIAPE', key: 'firstLastName', width: 15 },
+      { header: 'SEGAPE', key: 'secondLastName', width: 15 },
+      { header: 'FECNAC', key: 'birthDate', width: 12 },
+      { header: 'SEXO', key: 'gender', width: 8 },
+      { header: 'EPS', key: 'eps', width: 15 },
+      { header: 'DPTO', key: 'department', width: 15 },
+      { header: 'MIPIO', key: 'municipality', width: 15 },
+      { header: 'ZONA', key: 'zone', width: 10 },
+      { header: 'CIUDAD_NAC', key: 'ciudadNacimiento', width: 20 },
+      { header: 'CIUDAD_EXP', key: 'ciudadExpedicion', width: 20 },
+      { header: 'TOTAL', key: 'totalValue', width: 12 },
+      { header: 'FECHA_SERV', key: 'serviceDate', width: 12 },
+      { header: 'AUTORIZACION', key: 'authorization', width: 15 },
+      { header: 'DX', key: 'diagnosis', width: 10 },
+      { header: 'CUPS', key: 'cupsCode', width: 10 },
+      { header: 'TIPDOC_MED', key: 'doctorDocumentType', width: 12 },
+      { header: 'DOC_MEDICO', key: 'doctorDocumentNumber', width: 15 },
+      { header: 'NOMBRE_MEDICO', key: 'doctorName', width: 25 },
+      { header: 'TP_MEDICO', key: 'doctorProfessionalCard', width: 15 },
+      { header: 'ESPECIALIDAD', key: 'doctorSpecialty', width: 20 },
+      { header: 'EMPRESA', key: 'company', width: 20 },
+      { header: 'CONTRATO', key: 'contract', width: 20 }
+    ];
+
+    // Agregar los datos de la prefactura recién creada
+    services.forEach(service => {
+      worksheet.addRow({
+        documentNumber: patient.documentNumber,
+        documentType: patient.documentType,
+        firstName: patient.firstName,
+        secondName: patient.secondName,
+        firstLastName: patient.firstLastName,
+        secondLastName: patient.secondLastName,
+        birthDate: patient.birthDate ? new Date(patient.birthDate).toISOString().split('T')[0] : '',
+        gender: patient.gender,
+        eps: patient.eps,
+        department: patient.department,
+        municipality: patient.municipality,
+        zone: patient.zone || 'U',
+        ciudadNacimiento: patient.ciudadNacimiento,
+        ciudadExpedicion: patient.ciudadExpedicion,
+        totalValue: service.value,
+        serviceDate: service.serviceDate ? new Date(service.serviceDate).toISOString().split('T')[0] : '',
+        authorization: service.authorization || '',
+        diagnosis: service.diagnosis || '',
+        cupsCode: service.cupsCode,
+        doctorDocumentType: service.doctorDocumentType || '',
+        doctorDocumentNumber: service.doctorDocumentNumber || '',
+        doctorName: service.doctorName || '',
+        doctorProfessionalCard: service.doctorProfessionalCard || '',
+        doctorSpecialty: service.doctorSpecialty || '',
+        company: company.name || company,
+        contract: contract.name || contract
+      });
+    });
+
+    // Aplicar estilos
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Generar buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Enviar archivo
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=prefacturacion_${new Date().toISOString().split('T')[0]}.xlsx`
+    );
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Error exportando prefacturación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al exportar prefacturación',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createServiceRecord,
   getServiceRecords,
   updateRecordStatus,
   getPatientServices,
   assignContract,
-  createServiceRecordEnhanced
+  createServiceRecordEnhanced,
+  exportPrefacturacion
 };

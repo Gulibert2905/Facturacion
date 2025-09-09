@@ -5,7 +5,7 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
-import Services from './pages/Services';
+import ServicesWrapper from './pages/ServicesWrapper';
 import Reports from './pages/Reports';
 import ImportData from './pages/ImportData';
 import AuditDashboard from './pages/AuditDashboard';
@@ -73,7 +73,7 @@ function App() {
         <Route path="/services" element={
           <ProtectedRoute>
             <Layout>
-              <Services />
+              <ServicesWrapper />
             </Layout>
           </ProtectedRoute>
         } />

@@ -29,8 +29,33 @@ class ValidationService {
       });
       
       // Validar tipo de documento
-      if (patient.documentType && !['CC', 'TI', 'CE', 'PA', 'RC'].includes(patient.documentType)) {
-        errors.push('Tipo de documento inválido (debe ser CC, TI, CE, PA o RC)');
+      if (patient.documentType) {
+        const normalizedDocType = patient.documentType.toString().toUpperCase().trim();
+        if (!['CC', 'TI', 'CE', 'PA', 'RC', 'PT'].includes(normalizedDocType)) {
+          errors.push('Tipo de documento inválido (debe ser CC, TI, CE, PA, RC o PT)');
+        }
+      }
+      
+      // Validar tipo de documento según edad
+      if (patient.birthDate && patient.documentType) {
+        const birthDate = new Date(patient.birthDate);
+        if (!isNaN(birthDate.getTime())) {
+          const today = new Date();
+          const age = today.getFullYear() - birthDate.getFullYear() - 
+                     ((today.getMonth() < birthDate.getMonth() || 
+                       (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) ? 1 : 0);
+          
+          // Validar según rangos de edad (excepto PT y otros documentos especiales)
+          if (!['PT', 'CE', 'PA'].includes(patient.documentType)) {
+            if (age >= 0 && age <= 7 && patient.documentType !== 'RC') {
+              errors.push('Para menores de 0 a 7 años debe usar Registro Civil (RC)');
+            } else if (age >= 8 && age <= 17 && patient.documentType !== 'TI') {
+              errors.push('Para menores de 8 a 17 años debe usar Tarjeta de Identidad (TI)');
+            } else if (age >= 18 && patient.documentType !== 'CC') {
+              errors.push('Para mayores de 18 años debe usar Cédula de Ciudadanía (CC)');
+            }
+          }
+        }
       }
       
       // Validar número de documento
@@ -39,8 +64,11 @@ class ValidationService {
       }
       
       // Validar género
-      if (patient.gender && !['M', 'F'].includes(patient.gender)) {
-        errors.push('Género inválido (debe ser M o F)');
+      if (patient.gender) {
+        const normalizedGender = patient.gender.toString().toUpperCase().trim();
+        if (!['M', 'F'].includes(normalizedGender)) {
+          errors.push('Género inválido (debe ser M o F)');
+        }
       }
       
       // Validar fecha de nacimiento
@@ -67,8 +95,11 @@ class ValidationService {
       }
       
       // Validar régimen
-      if (patient.regimen && !['Contributivo', 'Subsidiado', 'Particular'].includes(patient.regimen)) {
-        warnings.push('Régimen no reconocido (valores comunes: Contributivo, Subsidiado, Particular)');
+      if (patient.regimen) {
+        const normalizedRegimen = patient.regimen.toString().toLowerCase().trim();
+        if (!['contributivo', 'subsidiado', 'particular'].includes(normalizedRegimen)) {
+          warnings.push('Régimen no reconocido (valores comunes: Contributivo, Subsidiado, Particular)');
+        }
       }
       
       return {

@@ -91,7 +91,7 @@ function CompanyManagement() {
     }
   }, [search, companies]);
   
-  const handleChangePage = (event, newPage) => {
+  const handleChangePage = (_event, newPage) => {
     setPage(newPage);
   };
   
@@ -322,7 +322,24 @@ function CompanyManagement() {
       </TableContainer>
       
       {/* Diálogo para editar/crear empresa */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        disablePortal={false}
+        hideBackdrop={false}
+        disableEnforceFocus={false}
+        disableAutoFocus={false}
+        disableRestoreFocus={false}
+        componentsProps={{
+          backdrop: {
+            sx: { 
+              backgroundColor: 'rgba(0, 0, 0, 0.5)' 
+            }
+          }
+        }}
+      >
         <DialogTitle>
           {currentCompany._id ? 'Editar Empresa' : 'Crear Nueva Empresa'}
         </DialogTitle>

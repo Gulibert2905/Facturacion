@@ -188,7 +188,7 @@ const validatePatientData = (req, res, next) => {
   const errors = [];
 
   // Validar tipo de documento
-  const validIdTypes = ['CC', 'TI', 'CE', 'PA', 'RC', 'AS', 'MS'];
+  const validIdTypes = ['CC', 'TI', 'CE', 'PA', 'RC', 'AS', 'MS', 'PE', 'PT', 'PPT', 'CNV', 'SC'];
   if (!tipoDocumento || !validIdTypes.includes(tipoDocumento)) {
     errors.push('Tipo de documento inválido');
   }

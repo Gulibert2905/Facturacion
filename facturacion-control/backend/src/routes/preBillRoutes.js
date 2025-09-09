@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, requirePermission, MODULES, ACTIONS } = require('../middleware/auth');
+const { validatePreBillDiagnoses } = require('../middleware/diagnosisValidation');
 const PreBill = require('../models/PreBill');
 const { 
   createPreBill, 
@@ -35,7 +36,7 @@ router.get('/', requirePermission(MODULES.PREBILLS, ACTIONS.READ), async (req, r
   }
 });
 
-router.post('/', requirePermission(MODULES.PREBILLS, ACTIONS.CREATE), async (req, res) => {
+router.post('/', requirePermission(MODULES.PREBILLS, ACTIONS.CREATE), validatePreBillDiagnoses, async (req, res) => {
   try {
     const { companyId, contractId, patientId, services, preBillId } = req.body;
     

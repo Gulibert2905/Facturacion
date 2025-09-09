@@ -5,12 +5,16 @@ const {
   generateTemplate,
   importPatients,
   importServices,
-  importCities 
+  importCities,
+  importDoctors,
+  importCIE11
 } = require('../controllers/importController');
 
 router.get('/template/:type', generateTemplate);
 router.post('/patients', importPatients);
 router.post('/services', importServices);
 router.post('/cities', importCities);
+router.post('/doctors', importDoctors);
+router.post('/cie11', importCIE11);
 
 module.exports = router;

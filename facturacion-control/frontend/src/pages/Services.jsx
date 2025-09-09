@@ -59,6 +59,11 @@ const [prefacturationSession, setPrefacturationSession] = useState({
 const [savedPreBills, setSavedPreBills] = useState([]);
 const [isLoading, setIsLoading] = useState(false);
 
+// Estados para diagnósticos CIE-11
+const [diagnoses, setDiagnoses] = useState([]);
+const [selectedDiagnosis, setSelectedDiagnosis] = useState(null);
+const [diagnosisSearch, setDiagnosisSearch] = useState('');
+
 // Función para validar número de documento colombiano
 const validateDocumentNumber = (docNumber) => {
   if (!docNumber) return false;
@@ -777,6 +782,45 @@ const calculateTotals = () => {
   };
 }
 
+// Función para buscar diagnósticos CIE-11
+const searchDiagnoses = async (searchTerm) => {
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    setDiagnoses([]);
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://localhost:5000/api/cie11/search?q=${encodeURIComponent(searchTerm)}`, {
+      headers: {
+        'Authorization': `Bearer ${secureStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setDiagnoses(data.data || []);
+    } else {
+      setDiagnoses([]);
+    }
+  } catch (error) {
+    console.error('Error searching diagnoses:', error);
+    setDiagnoses([]);
+  }
+};
+
+// Función para seleccionar diagnóstico
+const handleDiagnosisSelect = (diagnosisObj) => {
+  setSelectedDiagnosis(diagnosisObj);
+  if (diagnosisObj) {
+    setDiagnosis(diagnosisObj.code);
+    setDiagnosisSearch(`${diagnosisObj.code} - ${diagnosisObj.description}`);
+  } else {
+    setDiagnosis('');
+    setDiagnosisSearch('');
+  }
+};
+
 return (
   <Box>
     {!showServiceSelection ? (
@@ -1115,11 +1159,47 @@ return (
               />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Diagnóstico"
-                value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
+              <Autocomplete
+                options={diagnoses}
+                getOptionLabel={(option) => 
+                  `${option.code} - ${option.description}`
+                }
+                value={selectedDiagnosis}
+                onChange={(event, newValue) => handleDiagnosisSelect(newValue)}
+                inputValue={diagnosisSearch}
+                onInputChange={(event, newInputValue) => {
+                  setDiagnosisSearch(newInputValue);
+                  searchDiagnoses(newInputValue);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Diagnóstico CIE-11"
+                    placeholder="Buscar por código o descripción"
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={600}>
+                        {option.code}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.description}
+                      </Typography>
+                      {option.chapter && (
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          Cap: {option.chapter}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+                loading={diagnoses.length === 0 && diagnosisSearch.length > 2}
+                loadingText="Buscando diagnósticos..."
+                noOptionsText="No se encontraron diagnósticos CIE-11"
+                filterOptions={(x) => x}
               />
             </Grid>
             <Grid item xs={12}>

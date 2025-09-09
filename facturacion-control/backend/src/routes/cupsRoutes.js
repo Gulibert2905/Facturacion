@@ -12,7 +12,9 @@ const {
   removeTariff,
   importServices,
   getServiceTariff,
-  importTariffs
+  importTariffs,
+  toggleTariffStatus,
+  getServicesWithTariffs
 } = require('../controllers/cupsController');
 
 // Rutas para catálogo CUPS
@@ -28,5 +30,7 @@ router.post('/:cupsCode/tariff', assignTariff);
 router.delete('/:cupsCode/tariff/:contractId', removeTariff);
 router.get('/:cupsCode/tariff/:contractId', getServiceTariff);
 router.post('/contract/:contractId/import-tariffs', importTariffs);
+router.patch('/:cupsCode/tariff/:contractId/toggle', toggleTariffStatus);
+router.get('/contract/:contractId/services-with-tariffs', getServicesWithTariffs);
 
 module.exports = router;

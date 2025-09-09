@@ -104,7 +104,12 @@ const reprintPreBill = async (req, res) => {
       { header: 'FECHA_SERV', key: 'serviceDate', width: 12 },
       { header: 'AUTORIZACION', key: 'authorization', width: 15 },
       { header: 'DX', key: 'diagnosis', width: 10 },
-      { header: 'CUPS', key: 'cupsCode', width: 10 }
+      { header: 'CUPS', key: 'cupsCode', width: 10 },
+      { header: 'TIPDOC_MED', key: 'doctorDocumentType', width: 12 },
+      { header: 'DOC_MEDICO', key: 'doctorDocumentNumber', width: 15 },
+      { header: 'NOMBRE_MEDICO', key: 'doctorName', width: 25 },
+      { header: 'TP_MEDICO', key: 'doctorProfessionalCard', width: 15 },
+      { header: 'ESPECIALIDAD', key: 'doctorSpecialty', width: 20 }
     ];
 
     // Add data
@@ -124,7 +129,12 @@ const reprintPreBill = async (req, res) => {
           serviceDate: service.serviceDate ? new Date(service.serviceDate).toISOString().split('T')[0] : '',
           authorization: service.authorization || preBill.authorization || '',
           diagnosis: service.diagnosis || preBill.diagnosis || '',
-          cupsCode: service.cupsCode || ''
+          cupsCode: service.cupsCode || '',
+          doctorDocumentType: service.doctorDocumentType || '',
+          doctorDocumentNumber: service.doctorDocumentNumber || '',
+          doctorName: service.doctorName || '',
+          doctorProfessionalCard: service.doctorProfessionalCard || '',
+          doctorSpecialty: service.doctorSpecialty || ''
         });
       });
     } else {
@@ -181,6 +191,11 @@ const exportPreBills = async (req, res) => {
       { header: 'AUTORIZACION', key: 'authorization', width: 15 },
       { header: 'DX', key: 'diagnosis', width: 10 },
       { header: 'CUPS', key: 'cupsCode', width: 10 },
+      { header: 'TIPDOC_MED', key: 'doctorDocumentType', width: 12 },
+      { header: 'DOC_MEDICO', key: 'doctorDocumentNumber', width: 15 },
+      { header: 'NOMBRE_MEDICO', key: 'doctorName', width: 25 },
+      { header: 'TP_MEDICO', key: 'doctorProfessionalCard', width: 15 },
+      { header: 'ESPECIALIDAD', key: 'doctorSpecialty', width: 20 },
       { header: 'EMPRESA', key: 'company', width: 20 },
       { header: 'CONTRATO', key: 'contract', width: 20 }
     ];
@@ -208,6 +223,11 @@ const exportPreBills = async (req, res) => {
           authorization: service.authorization,
           diagnosis: service.diagnosis,
           cupsCode: service.cupsCode,
+          doctorDocumentType: service.doctorDocumentType || '',
+          doctorDocumentNumber: service.doctorDocumentNumber || '',
+          doctorName: service.doctorName || '',
+          doctorProfessionalCard: service.doctorProfessionalCard || '',
+          doctorSpecialty: service.doctorSpecialty || '',
           company: bill.companyId.name,
           contract: bill.contractId.name
         });

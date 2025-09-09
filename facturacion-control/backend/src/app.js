@@ -19,6 +19,8 @@ const reportRoutes = require('./routes/reportRoutes');
 const importRoutes = require('./routes/importRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
+const doctorRoutes = require('./routes/doctorRoutes');
+const cie11Routes = require('./routes/cie11Routes');
 
 
 // Importar nuevas rutas de Fase 3
@@ -124,6 +126,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/role-permissions', rolePermissionRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/cie11', cie11Routes);
 
 // Nuevas rutas de la Fase 3
 app.use('/api/rips', ripsRoutes);

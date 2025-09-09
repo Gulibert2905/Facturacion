@@ -1,61 +1,134 @@
-// models/ServiceRecord.js
 const mongoose = require('mongoose');
 
 const serviceRecordSchema = new mongoose.Schema({
-    pacienteId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient',
-        required: true
-    },
-    empresa: {  // Referencia a la empresa
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Company',
-        default: null  // Permitir que sea null
-    },
-    contratoId: {  // Referencia al contrato
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Contract',
-        default: null  // Permitir que sea null
-    },
-    numeroDocumento: {
-        type: String,
-        required: true
-    },
-    codigoCups: {
-        type: String,
-        required: true
-    },
-    fechaServicio: {
-        type: Date,
-        required: true
-    },
-    valor: {
-        type: Number,
-        default: 0  // Valor por defecto
-    },
-    descripcion: String,
-    autorizacion: String,
-    diagnostico: String,
-    estado: {
-        type: String,
-        default: 'pendiente'
-    },
-    estaPrefacturado: {
-        type: Boolean,
-        default: false
-    },
-    fechaPrefacturacion: Date
+  // Información del paciente
+  documentType: {
+    type: String,
+    required: true,
+    enum: ['CC', 'CE', 'TI', 'RC', 'PA', 'MS', 'AS', 'PE']
+  },
+  documentNumber: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  patientName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // Información del servicio
+  serviceDate: {
+    type: Date,
+    required: true
+  },
+  cupsCode: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  value: {
+    type: Number,
+    default: 0
+  },
+  
+  // Información adicional
+  municipality: {
+    type: String,
+    trim: true
+  },
+  observations: {
+    type: String,
+    trim: true
+  },
+  authorization: {
+    type: String,
+    trim: true
+  },
+  diagnosis: {
+    type: String,
+    trim: true
+  },
+  
+  // Información del médico (Resolución 2275 de 2023)
+  doctorDocumentType: {
+    type: String,
+    enum: ['CC', 'CE', 'TI', 'RC', 'PA', 'MS', 'AS', 'PE']
+  },
+  doctorDocumentNumber: {
+    type: String,
+    trim: true
+  },
+  doctorName: {
+    type: String,
+    trim: true
+  },
+  doctorProfessionalCard: {
+    type: String,
+    trim: true
+  },
+  doctorSpecialty: {
+    type: String,
+    trim: true
+  },
+  
+  // Referencias
+  contractId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Contract'
+  },
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company'
+  },
+  preBillId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PreBill'
+  },
+  
+  // Estado
+  status: {
+    type: String,
+    enum: ['pendiente', 'prefacturado', 'facturado', 'anulado'],
+    default: 'pendiente'
+  },
+  
+  // Auditoría
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
 }, {
-    timestamps: true,
-    toJSON: { getters: true }
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Modificar el índice para permitir servicios duplicados con diferentes contratos
+// Índices para búsqueda eficiente
+serviceRecordSchema.index({ documentNumber: 1 });
+serviceRecordSchema.index({ serviceDate: 1 });
+serviceRecordSchema.index({ cupsCode: 1 });
+serviceRecordSchema.index({ status: 1 });
+serviceRecordSchema.index({ contractId: 1 });
+serviceRecordSchema.index({ company: 1 });
+serviceRecordSchema.index({ doctorDocumentNumber: 1 });
+
+// Índice compuesto para evitar duplicados
 serviceRecordSchema.index({
-    pacienteId: 1,
-    codigoCups: 1,
-    fechaServicio: 1,
-    contratoId: 1
+  documentNumber: 1,
+  cupsCode: 1,
+  serviceDate: 1,
+  contractId: 1
 }, { unique: true });
+
+// Virtual para verificar si está prefacturado
+serviceRecordSchema.virtual('isPrefactured').get(function() {
+  return this.status === 'prefacturado' || this.status === 'facturado';
+});
 
 module.exports = mongoose.model('ServiceRecord', serviceRecordSchema);
